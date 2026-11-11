@@ -1,0 +1,55 @@
+name: Raporu güncelle
+
+on:
+  workflow_dispatch:   # web sayfasındaki "Güncelle" butonu ya da Actions sekmesindeki "Run workflow"
+
+concurrency:
+  group: hareketsiz-stok
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  guncelle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      TZ: Europe/Istanbul
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Gerekli paket
+        run: pip install --quiet cryptography
+
+      - name: Önceki önbelleği al
+        run: |
+          if git fetch --quiet --depth 1 origin veri 2>/dev/null; then
+            git show FETCH_HEAD:onbellek.enc > kod/onbellek.enc 2>/dev/null || rm -f kod/onbellek.enc
+          fi
+
+      - name: Pobol'dan veriyi çek ve raporu hazırla
+        env:
+          POBOL_KULLANICI: ${{ secrets.POBOL_KULLANICI }}
+          POBOL_SIFRE: ${{ secrets.POBOL_SIFRE }}
+          RAPOR_SIFRESI: ${{ secrets.RAPOR_SIFRESI }}
+          WEB_ERISIM_TOKEN: ${{ secrets.WEB_ERISIM_TOKEN }}
+          POBOL_ADRES: ${{ vars.POBOL_ADRES }}
+          HARIC_RAFLAR: ${{ vars.HARIC_RAFLAR }}
+        run: python -u kod/bulut.py
+
+      - name: Şifreli dosyaları 'veri' dalına yükle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd cikti
+          git init --quiet -b veri
+          git config user.name "rapor-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit --quiet -m "Rapor $(date '+%d.%m.%Y %H:%M')"
+          git push --quiet --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" veri
