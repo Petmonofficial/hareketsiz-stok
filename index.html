@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hareketsiz Raf Stoğu</title>
+<style>
+  :root{
+    --bg:#0a0e13; --bg2:#0f151c; --card:rgba(255,255,255,.035); --card2:rgba(255,255,255,.06);
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.14);
+    --tx:#e8edf2; --tx2:#9aa7b4; --tx3:#66727e;
+    --ac:#2fd08c; --ac2:rgba(47,208,140,.14);
+    --yel:#f2c94c; --org:#f2994a; --red:#eb5757; --blu:#56ccf2;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font:14px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif; color:var(--tx);
+    background:radial-gradient(1200px 600px at 10% -10%,rgba(47,208,140,.10),transparent 60%),
+               radial-gradient(900px 500px at 110% 0%,rgba(86,204,242,.08),transparent 60%),var(--bg);
+    min-height:100vh;
+  }
+  .wrap{max-width:1500px;margin:0 auto;padding:28px 28px 60px}
+  header{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:22px}
+  h1{font-size:26px;margin:0;font-weight:650;letter-spacing:-.3px}
+  h1 small{display:block;font-size:13px;font-weight:400;color:var(--tx2);margin-top:6px;letter-spacing:0}
+  .glass{background:var(--card);border:1px solid var(--line);border-radius:16px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  .tabs{display:flex;gap:6px;padding:6px}
+  .tab{border:0;background:transparent;color:var(--tx2);padding:10px 18px;border-radius:11px;cursor:pointer;font:inherit;font-weight:600;display:flex;gap:10px;align-items:center;transition:.15s}
+  .tab:hover{color:var(--tx);background:var(--card2)}
+  .tab.on{background:var(--ac2);color:var(--ac);box-shadow:inset 0 0 0 1px rgba(47,208,140,.35)}
+  .tab .c{font-size:12px;background:rgba(255,255,255,.08);color:var(--tx);padding:2px 8px;border-radius:20px;font-weight:600}
+  .tab.on .c{background:var(--ac);color:#04140c}
+
+  .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:16px}
+  .kpi{padding:16px 18px}
+  .kpi .l{color:var(--tx2);font-size:12px;text-transform:uppercase;letter-spacing:.6px}
+  .kpi .v{font-size:26px;font-weight:650;margin-top:4px;font-variant-numeric:tabular-nums}
+  .kpi .s{font-size:12px;color:var(--tx3);margin-top:2px}
+
+  .grid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start}
+  .side{padding:16px;position:sticky;top:16px}
+  .side h3{margin:0 0 4px;font-size:13px;color:var(--tx2);font-weight:600;text-transform:uppercase;letter-spacing:.6px}
+  .side .hint{font-size:12px;color:var(--tx3);margin-bottom:12px}
+  .bseg{display:flex;gap:4px;margin-bottom:12px}
+  .bseg button{flex:1;border:1px solid var(--line);background:transparent;color:var(--tx2);border-radius:8px;padding:5px;font:inherit;font-size:12px;cursor:pointer}
+  .bseg button.on{border-color:rgba(47,208,140,.4);color:var(--ac);background:var(--ac2)}
+  .brow{display:block;width:100%;text-align:left;border:0;background:transparent;color:var(--tx);font:inherit;padding:6px 8px;border-radius:8px;cursor:pointer;margin-bottom:2px}
+  .brow:hover{background:var(--card2)}
+  .brow.on{background:var(--ac2)}
+  .brow .t{display:flex;justify-content:space-between;gap:8px;font-size:13px}
+  .brow .t span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .brow .t span:last-child{color:var(--tx2);font-variant-numeric:tabular-nums;flex:none}
+  .bar{height:4px;border-radius:4px;background:rgba(255,255,255,.06);margin-top:5px;overflow:hidden}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--ac),var(--blu));border-radius:4px}
+
+  .main{min-width:0}
+  .filters{display:flex;flex-wrap:wrap;gap:10px;padding:12px;margin-bottom:12px;align-items:center;position:relative;z-index:30}
+  .inp{background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--tx);border-radius:10px;padding:9px 12px;font:inherit;outline:none}
+  .inp:focus{border-color:rgba(47,208,140,.5)}
+  #q{flex:1 1 170px;min-width:150px}
+  #raf{width:105px}
+  .ms{position:relative}
+  .ms > button{min-width:165px;text-align:left;cursor:pointer;display:flex;justify-content:space-between;gap:10px}
+  .ms .dd{position:absolute;top:calc(100% + 6px);left:0;z-index:20;width:320px;max-height:380px;display:none;flex-direction:column;padding:10px;background:#121a22;border:1px solid var(--line2);border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+  .ms.open .dd{display:flex}
+  .ms .dd .list{overflow:auto;margin-top:8px}
+  .ms label{display:flex;gap:8px;align-items:center;padding:5px 6px;border-radius:7px;cursor:pointer;font-size:13px}
+  .ms label:hover{background:var(--card2)}
+  .ms label span.n{margin-left:auto;color:var(--tx3);font-size:12px}
+  .ms .acts{display:flex;gap:6px;margin-top:8px}
+  .chk{display:flex;gap:7px;align-items:center;color:var(--tx2);cursor:pointer;user-select:none;font-size:13px}
+  .chk input{accent-color:var(--ac)}
+  .btn{border:1px solid var(--line2);background:var(--card2);color:var(--tx);border-radius:10px;padding:9px 14px;font:inherit;cursor:pointer;font-weight:600}
+  .btn:hover{border-color:rgba(47,208,140,.5)}
+  .btn.pri{background:var(--ac);color:#04140c;border-color:var(--ac)}
+  .btn.sm{padding:5px 10px;font-size:12px;font-weight:500}
+  .spacer{flex:1}
+
+  .tbl{overflow:hidden}
+  .tscroll{overflow:auto}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  th{position:sticky;top:0;background:#111820;text-align:left;font-size:12px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;padding:12px 12px;border-bottom:1px solid var(--line);cursor:pointer;white-space:nowrap;user-select:none}
+  th.r,td.r{text-align:right}
+  th:hover{color:var(--tx)}
+  th .ar{opacity:.0;margin-left:4px}
+  th.sorted .ar{opacity:1;color:var(--ac)}
+  td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.045);vertical-align:middle}
+  tr:hover td{background:rgba(255,255,255,.025)}
+  .pn{font-weight:550;max-width:460px}
+  .pc{font-size:12px;color:var(--tx3);margin-top:2px}
+  .raf{font-family:Consolas,ui-monospace,monospace;background:rgba(86,204,242,.10);color:var(--blu);padding:2px 7px;border-radius:6px;font-size:12px}
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-weight:650;font-size:12px;white-space:nowrap}
+  .b1{background:rgba(242,201,76,.14);color:var(--yel)}
+  .b2{background:rgba(242,153,74,.15);color:var(--org)}
+  .b3{background:rgba(235,87,87,.16);color:var(--red)}
+  .note{font-size:12px;color:var(--org)}
+  .muted{color:var(--tx3)}
+  .never{font-size:12px;color:var(--red)}
+  .pager{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:12px 14px;color:var(--tx2);font-size:13px;border-top:1px solid var(--line)}
+  .empty{padding:60px;text-align:center;color:var(--tx2)}
+  footer{margin-top:18px;padding:14px 18px;font-size:12px;color:var(--tx3);line-height:1.7}
+  footer b{color:var(--tx2);font-weight:600}
+  @media (max-width:1100px){.grid{grid-template-columns:1fr}.side{position:static;order:2}.kpis{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:700px){
+    .wrap{padding:16px 12px 40px}
+    header{flex-direction:column;align-items:stretch}
+    h1{font-size:22px}
+    .hright{align-items:stretch;width:100%}
+    #webbar{justify-content:flex-start}
+    #webbar select{flex:1;min-width:0}
+    .tabs{width:100%}
+    .tab{flex:1;justify-content:center;padding:9px 6px;gap:6px;white-space:nowrap;font-size:13px}
+    .kpi{padding:12px 14px}.kpi .v{font-size:21px}
+    .filters > *{flex:1 1 100%}
+    .ms > button{width:100%}
+    .ms .dd{width:100%}
+    .spacer{display:none}
+    .pager{flex-direction:column;align-items:stretch}
+  }
+
+  /* --- web: giriş ve üst çubuk */
+  #login{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:20px;z-index:100}
+  #login form{width:100%;max-width:380px;padding:30px 28px;display:flex;flex-direction:column;gap:12px}
+  #login h2{margin:0;font-size:22px;font-weight:650}
+  #login p{margin:0 0 6px;color:var(--tx2);font-size:13px}
+  #login .inp{width:100%;padding:12px 14px}
+  #login .btn{padding:12px}
+  #lerr{color:var(--red);font-size:13px;min-height:18px}
+  .hright{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+  #webbar{display:none;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;font-size:13px;color:var(--tx2)}
+  #webbar select{padding:6px 10px}
+  #durum{font-size:13px;color:var(--tx2)}
+  #durum.calisiyor{color:var(--blu)} #durum.hata{color:var(--red)} #durum.ok{color:var(--ac)}
+  #durum a{color:inherit}
+  #guncelle:disabled{opacity:.6;cursor:default}
+  .spin{display:inline-block;width:11px;height:11px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-1px;margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  #yuk{position:fixed;top:14px;left:50%;transform:translateX(-50%);display:none;z-index:120;padding:8px 16px;font-size:13px}
+</style>
+</head>
+<body>
+<div id="login"><form class="glass" id="lform" autocomplete="on">
+  <h2>Hareketsiz Raf Stoğu</h2>
+  <p>Raporu görmek için şifreyi girin.</p>
+  <input type="text" name="username" value="rapor" autocomplete="username" hidden>
+  <input class="inp" id="lpw" type="password" placeholder="Şifre" autocomplete="current-password" required>
+  <div id="lerr"></div>
+  <button class="btn pri" id="lbtn" type="submit">Giriş yap</button>
+</form></div>
+<div id="yuk" class="glass">Rapor yükleniyor…</div>
+<div class="wrap" id="app">
+  <header>
+    <h1>Hareketsiz Raf Stoğu<small id="sub"></small></h1>
+    <div class="hright">
+      <div id="webbar">
+        <span id="durum"></span>
+        <button class="btn sm pri" id="guncelle">↻ Güncelle</button>
+        <button class="btn sm" id="cikis">Çıkış</button>
+      </div>
+      <div class="glass tabs" id="tabs"></div>
+    </div>
+  </header>
+
+  <section class="kpis" id="kpis"></section>
+
+  <div class="grid">
+    <aside class="glass side">
+      <h3>Markaya göre</h3>
+      <div class="hint">Tıklayınca filtreye eklenir / çıkarılır</div>
+      <div class="bseg" id="bseg">
+        <button data-k="cnt" class="on">Ürün sayısı</button>
+        <button data-k="val" id="bsegval">Bağlı tutar</button>
+      </div>
+      <div id="brands"></div>
+    </aside>
+
+    <main class="main">
+      <div class="glass filters">
+        <input id="q" class="inp" placeholder="Ürün, barkod, stok kodu…" autocomplete="off">
+        <div class="ms" id="ms">
+          <button class="inp" id="msbtn"><span id="mslbl">Tüm markalar</span><span>▾</span></button>
+          <div class="dd">
+            <input class="inp" id="msq" placeholder="Marka ara…">
+            <div class="list" id="mslist"></div>
+            <div class="acts"><button class="btn sm" id="msnone">Temizle</button><span class="spacer"></span><button class="btn sm" id="msclose">Tamam</button></div>
+          </div>
+        </div>
+        <input id="raf" class="inp" placeholder="Raf (A01…)" autocomplete="off">
+        <label class="chk"><input type="checkbox" id="fnever"> Hiç satılmamış</label>
+        <label class="chk"><input type="checkbox" id="fadj"> Sayım/düzeltme olan</label>
+        <span class="spacer"></span>
+        <button class="btn" id="reset">Filtreleri temizle</button>
+        <button class="btn pri" id="csv">Excel'e aktar</button>
+      </div>
+
+      <div class="glass tbl">
+        <div class="tscroll"><table>
+          <thead><tr id="thead"></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table></div>
+        <div class="pager" id="pager"></div>
+      </div>
+    </main>
+  </div>
+
+  <footer class="glass" id="foot"></footer>
+</div>
+
+<script>
+const nf = new Intl.NumberFormat('tr-TR', {maximumFractionDigits: 0});
+const nf2 = new Intl.NumberFormat('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const trLower = s => String(s ?? '').toLocaleLowerCase('tr-TR');
+const fmtDate = s => s ? s.slice(8,10)+'.'+s.slice(5,7)+'.'+s.slice(0,4) : '';
+const tabName = p => p === 7 ? '1 Hafta+' : p === 14 ? '2 Hafta+' : p === 30 ? '30 Gün+' : p === 60 ? '2 Ay+' : p === 90 ? '3 Ay+' : p === 180 ? '6 Ay+' : p === 365 ? '1 Yıl+' : p + ' Gün+';
+
+let S, current;
+function baslat(D) {
+S = {win: D.pencereler[0], q: '', raf: '', brands: new Set(), never: false, adj: false,
+           sort: 'g', dir: -1, page: 0, per: 50, bmode: 'cnt'};
+
+const COLS = [
+  {k: 'a', l: 'Ürün'}, {k: 'm', l: 'Marka'}, {k: 'r', l: 'Raf'},
+  {k: 's', l: 'Raf stoğu', r: 1}, {k: 't', l: 'Son satış çıkışı'}, {k: 'g', l: 'Hareketsiz', r: 1},
+  ...(D.fiyat_var ? [{k: 'f', l: 'Alış fiyatı', r: 1}, {k: 'v', l: 'Bağlı tutar', r: 1}] : []),
+  {k: 'n', l: 'Not'}
+];
+
+function base(win) { return D.satirlar.filter(r => r.g >= win); }
+
+function apply(rows, skipBrand) {
+  const q = trLower(S.q).trim(), raf = S.raf.trim().toUpperCase();
+  return rows.filter(r => {
+    if (!skipBrand && S.brands.size && !S.brands.has(r.m)) return false;
+    if (raf && !String(r.r).toUpperCase().startsWith(raf)) return false;
+    if (S.never && r.src !== 'hic_satilmadi' && r.src !== 'bilinmiyor') return false;
+    if (S.adj && !r.n) return false;
+    if (q && !(trLower(r.a).includes(q) || String(r.b).includes(q) || trLower(r.k).includes(q))) return false;
+    return true;
+  });
+}
+
+function renderTabs() {
+  document.getElementById('tabs').innerHTML = D.pencereler.map(p =>
+    `<button class="tab ${p === S.win ? 'on' : ''}" data-p="${p}">${tabName(p)} <span class="c">${nf.format(base(p).length)}</span></button>`).join('');
+  document.querySelectorAll('.tab').forEach(b => b.onclick = () => { S.win = +b.dataset.p; S.page = 0; render(); });
+}
+
+function renderKpis(rows) {
+  const qty = rows.reduce((a, r) => a + r.s, 0), val = rows.reduce((a, r) => a + r.v, 0);
+  const never = rows.filter(r => r.src === 'hic_satilmadi' || r.src === 'bilinmiyor').length;
+  const k = [
+    ['Hareketsiz ürün', nf.format(rows.length), `raflarda stoğu olan ${nf.format(D.toplam_rafta)} üründen`],
+    ['Raftaki adet', nf.format(qty), 'satılmayı bekleyen'],
+    D.fiyat_var ? ['Bağlı tutar', '₺' + nf.format(val), 'alış fiyatı × raf stoğu'] : ['Ortalama süre', nf.format(rows.length ? rows.reduce((a, r) => a + r.g, 0) / rows.length : 0) + ' gün', 'son satıştan bu yana'],
+    ['Hiç satış görmemiş', nf.format(never), 'bakılan geçmişte satış yok'],
+  ];
+  document.getElementById('kpis').innerHTML = k.map(([l, v, s]) =>
+    `<div class="glass kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join('');
+}
+
+function renderBrands() {
+  const rows = apply(base(S.win), true);
+  const m = new Map();
+  rows.forEach(r => { const o = m.get(r.m) || {cnt: 0, val: 0}; o.cnt++; o.val += r.v; m.set(r.m, o); });
+  const arr = [...m.entries()].sort((a, b) => b[1][S.bmode] - a[1][S.bmode]).slice(0, 18);
+  const max = arr.length ? arr[0][1][S.bmode] || 1 : 1;
+  document.getElementById('brands').innerHTML = arr.length ? arr.map(([b, o]) =>
+    `<button class="brow ${S.brands.has(b) ? 'on' : ''}" data-b="${esc(b)}">
+       <div class="t"><span>${esc(b)}</span><span>${S.bmode === 'cnt' ? nf.format(o.cnt) + ' ürün' : '₺' + nf.format(o.val)}</span></div>
+       <div class="bar"><i style="width:${Math.max(2, o[S.bmode] / max * 100)}%"></i></div></button>`).join('')
+    : '<div class="muted">Kayıt yok</div>';
+  document.querySelectorAll('.brow').forEach(b => b.onclick = () => {
+    const v = b.dataset.b; S.brands.has(v) ? S.brands.delete(v) : S.brands.add(v); S.page = 0; render();
+  });
+}
+
+function renderMs() {
+  const counts = new Map();
+  apply(base(S.win), true).forEach(r => counts.set(r.m, (counts.get(r.m) || 0) + 1));
+  const all = [...new Set([...counts.keys(), ...S.brands])].sort((a, b) => a.localeCompare(b, 'tr'));
+  const q = trLower(document.getElementById('msq').value);
+  document.getElementById('mslist').innerHTML = all.filter(b => !q || trLower(b).includes(q)).map(b =>
+    `<label><input type="checkbox" value="${esc(b)}" ${S.brands.has(b) ? 'checked' : ''}> ${esc(b)} <span class="n">${counts.get(b) || 0}</span></label>`).join('');
+  document.querySelectorAll('#mslist input').forEach(c => c.onchange = () => {
+    c.checked ? S.brands.add(c.value) : S.brands.delete(c.value); S.page = 0; render(true);
+  });
+  document.getElementById('mslbl').textContent = S.brands.size === 0 ? 'Tüm markalar' :
+    S.brands.size === 1 ? [...S.brands][0] : S.brands.size + ' marka seçili';
+}
+
+function badge(r) {
+  const cls = r.g >= 180 ? 'b3' : r.g >= 30 ? 'b2' : 'b1';
+  return `<span class="badge ${cls}">${nf.format(r.g)}${r.gp ? '' : '+'} gün</span>`;
+}
+
+function cell(r, c) {
+  switch (c.k) {
+    case 'a': return `<td><div class="pn">${esc(r.a)}</div><div class="pc">${esc(r.b)}${r.k && r.k !== r.b ? ' · ' + esc(r.k) : ''}</div></td>`;
+    case 'm': return `<td>${esc(r.m)}</td>`;
+    case 'r': return `<td>${r.r ? `<span class="raf">${esc(r.r)}</span>` : '<span class="muted">—</span>'}</td>`;
+    case 's': return `<td class="r">${nf.format(r.s)}</td>`;
+    case 't': return `<td>${r.t ? fmtDate(r.t) : r.src === 'hic_satilmadi' ? '<span class="never" title="Depoya girdiğinden beri hiç raftan satış çıkışı yok">Hiç satılmadı</span>' : `<span class="never" title="Bakılan geçmişte satış çıkışı bulunamadı">${D.gecmis_gun}+ gündür yok</span>`}</td>`;
+    case 'g': return `<td class="r">${badge(r)}</td>`;
+    case 'f': return `<td class="r">${r.f ? nf2.format(r.f) : '<span class="muted">—</span>'}</td>`;
+    case 'v': return `<td class="r">${r.v ? '₺' + nf.format(r.v) : '<span class="muted">—</span>'}</td>`;
+    case 'n': return `<td>${r.n ? `<span class="note">${esc(r.n)}</span>` : ''}</td>`;
+  }
+}
+
+function sorted(rows) {
+  const k = S.sort, d = S.dir;
+  return [...rows].sort((a, b) => {
+    let x = a[k], y = b[k];
+    if (typeof x === 'string' || typeof y === 'string') return String(x ?? '').localeCompare(String(y ?? ''), 'tr') * d;
+    return ((x ?? 0) - (y ?? 0)) * d;
+  });
+}
+
+function renderTable(rows) {
+  document.getElementById('thead').innerHTML = COLS.map(c =>
+    `<th class="${c.r ? 'r' : ''} ${S.sort === c.k ? 'sorted' : ''}" data-k="${c.k}">${c.l}<span class="ar">${S.sort === c.k ? (S.dir > 0 ? '▲' : '▼') : '▼'}</span></th>`).join('');
+  document.querySelectorAll('th').forEach(th => th.onclick = () => {
+    const k = th.dataset.k; if (S.sort === k) S.dir *= -1; else { S.sort = k; S.dir = ['a', 'm', 'r', 'n'].includes(k) ? 1 : -1; }
+    S.page = 0; render();
+  });
+  const pages = Math.max(1, Math.ceil(rows.length / S.per));
+  if (S.page >= pages) S.page = pages - 1;
+  const slice = sorted(rows).slice(S.page * S.per, (S.page + 1) * S.per);
+  document.getElementById('tbody').innerHTML = slice.length ? slice.map(r => '<tr>' + COLS.map(c => cell(r, c)).join('') + '</tr>').join('')
+    : `<tr><td colspan="${COLS.length}"><div class="empty">Bu filtrelerle hareketsiz ürün yok 🎉</div></td></tr>`;
+  document.getElementById('pager').innerHTML = `
+    <span>${nf.format(rows.length)} ürün · sayfa ${S.page + 1}/${pages}</span>
+    <span style="display:flex;gap:6px;align-items:center">
+      <select class="inp" id="per" style="padding:5px 8px">${[25, 50, 100, 250].map(n => `<option ${n === S.per ? 'selected' : ''}>${n}</option>`).join('')}</select>
+      <button class="btn sm" id="prev" ${S.page === 0 ? 'disabled' : ''}>‹ Önceki</button>
+      <button class="btn sm" id="next" ${S.page >= pages - 1 ? 'disabled' : ''}>Sonraki ›</button>
+    </span>`;
+  document.getElementById('prev').onclick = () => { S.page--; renderTable(rows); };
+  document.getElementById('next').onclick = () => { S.page++; renderTable(rows); };
+  document.getElementById('per').onchange = e => { S.per = +e.target.value; S.page = 0; renderTable(rows); };
+}
+
+current = [];
+function render(keepMs) {
+  current = apply(base(S.win));
+  renderTabs(); renderKpis(current); renderBrands(); renderTable(current);
+  if (!keepMs) renderMs(); else {
+    document.getElementById('mslbl').textContent = S.brands.size === 0 ? 'Tüm markalar' : S.brands.size === 1 ? [...S.brands][0] : S.brands.size + ' marka seçili';
+  }
+}
+
+function exportCsv() {
+  const head = ['Barkod', 'Stok Kodu', 'Ürün', 'Marka', 'Raf', 'Raf Stoğu', 'Son Satış Çıkışı', 'Hareketsiz Gün',
+    ...(D.fiyat_var ? ['Alış Fiyatı', 'Bağlı Tutar'] : []), 'Not'];
+  const num = v => String(v ?? '').replace('.', ',');
+  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const lines = sorted(current).map(r => [
+    q(r.b), q(r.k), q(r.a), q(r.m), q(r.r), num(r.s),
+    q(r.t ? fmtDate(r.t) : r.src === 'hic_satilmadi' ? 'Hiç satılmadı' : 'Son ' + D.gecmis_gun + '+ günde yok'),
+    (r.gp ? '' : '>') + r.g, ...(D.fiyat_var ? [num(r.f), num(r.v)] : []), q(r.n)].join(';'));
+  const blob = new Blob(['﻿' + head.join(';') + '\r\n' + lines.join('\r\n')], {type: 'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `hareketsiz_${tabName(S.win).replace(/\W+/g, '')}_${D.olusturma.slice(0, 10).replace(/\./g, '-')}.csv`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+// --- olaylar
+document.getElementById('sub').textContent = `${D.firma} · ${D.olusturma} itibarıyla · raflarda stoğu olan ${nf.format(D.toplam_rafta)} ürün tarandı`;
+let t;
+document.getElementById('q').oninput = e => { clearTimeout(t); t = setTimeout(() => { S.q = e.target.value; S.page = 0; render(); }, 150); };
+document.getElementById('raf').oninput = e => { S.raf = e.target.value; S.page = 0; render(); };
+document.getElementById('fnever').onchange = e => { S.never = e.target.checked; S.page = 0; render(); };
+document.getElementById('fadj').onchange = e => { S.adj = e.target.checked; S.page = 0; render(); };
+document.getElementById('csv').onclick = exportCsv;
+document.getElementById('reset').onclick = () => {
+  S.q = S.raf = ''; S.brands.clear(); S.never = S.adj = false; S.page = 0;
+  ['q', 'raf', 'msq'].forEach(id => document.getElementById(id).value = '');
+  ['fnever', 'fadj'].forEach(id => document.getElementById(id).checked = false); render();
+};
+const ms = document.getElementById('ms');
+document.getElementById('msbtn').onclick = e => { e.stopPropagation(); ms.classList.toggle('open'); renderMs(); document.getElementById('msq').focus(); };
+document.getElementById('msclose').onclick = () => { ms.classList.remove('open'); render(); };
+document.getElementById('msnone').onclick = () => { S.brands.clear(); S.page = 0; render(); };
+document.getElementById('msq').oninput = () => renderMs();
+document.onclick = (e => { if (!ms.contains(e.target) && ms.classList.contains('open')) { ms.classList.remove('open'); render(); } });
+document.querySelectorAll('#bseg button').forEach(b => b.onclick = () => {
+  S.bmode = b.dataset.k; document.querySelectorAll('#bseg button').forEach(x => x.classList.toggle('on', x === b)); renderBrands();
+});
+document.getElementById('bsegval').style.display = D.fiyat_var ? '' : 'none';
+document.getElementById('foot').innerHTML = `
+  <b>Kural:</b> Sadece <b>depo raflarından</b> (raf tipi 1) yapılan, kayıp sebebi olmayan <b>gerçek çıkışlar</b> satış hareketi sayılır.
+  Sayım, stok düzeltme, defolu, raf sıfırlama gibi kayıp sebepli çıkışlar ile personel sepeti / kovan / hasarlı-SKT rafı hareketleri sayılmaz.
+  Stok olarak <b>raflardaki stok</b> esas alınır. “Hareketsiz” = son satış çıkışından bugüne geçen gün; hiç satılmamış ürünlerde depoya ilk giriş tarihinden itibaren sayılır.
+  <br><b>Bilinen sınır:</b> Bir ürünün başka rafa taşınması da raftan çıkış olarak görünür ve “hareket” sayılır.
+  <br>Oluşturma: ${D.olusturma} · ${nf.format(D.istek)} API isteği · ${nf.format(D.sure)} sn · sürüm ${D.surum}`;
+render();
+}
+
+// ===================== WEB (GitHub) =====================
+// Rapor GitHub'da RAPOR_SIFRESI ile şifreli durur; şifre tarayıcıda anahtara çevrilip çözülür.
+const $ = id => document.getElementById(id);
+const OTK = 'hs_anahtar_v1';
+const TEKRAR = 600000;
+let ANAHTAR = null, TOKEN = null, IZLE = null, SON_RAPOR_ZAMANI = null;
+
+function ghAyar(W) {
+  const g = Object.assign({api: 'https://api.github.com', raw: 'https://raw.githubusercontent.com', is: 'guncelle.yml', dal: 'veri'}, W);
+  if (!g.sahip || !g.depo) {  // https://SAHIP.github.io/DEPO/ adresinden otomatik bul
+    g.sahip = g.sahip || location.hostname.split('.')[0];
+    g.depo = g.depo || location.pathname.split('/').filter(Boolean)[0] || (g.sahip + '.github.io');
+  }
+  return g;
+}
+const b64e = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const b64d = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function tuz(G) {
+  const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('hareketsiz-stok:' + (G.sahip + '/' + G.depo).toLowerCase()));
+  return new Uint8Array(h).slice(0, 16);
+}
+async function anahtarTuret(G, sifre) {
+  const temel = await crypto.subtle.importKey('raw', new TextEncoder().encode(sifre), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name: 'PBKDF2', salt: await tuz(G), iterations: TEKRAR, hash: 'SHA-256'},
+    temel, {name: 'AES-GCM', length: 256}, true, ['decrypt']);
+}
+async function anahtarSakla(k) { try { sessionStorage.setItem(OTK, b64e(await crypto.subtle.exportKey('raw', k))); } catch (e) {} }
+async function anahtarAl() {
+  try { const r = sessionStorage.getItem(OTK); return r ? await crypto.subtle.importKey('raw', b64d(r), 'AES-GCM', false, ['decrypt']) : null; }
+  catch (e) { return null; }
+}
+async function coz(metin) {
+  const o = JSON.parse(metin);
+  let acik;
+  try { acik = await crypto.subtle.decrypt({name: 'AES-GCM', iv: b64d(o.n)}, ANAHTAR, b64d(o.c)); }
+  catch (e) { throw new Error('SIFRE'); }
+  const akis = new Blob([acik]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return JSON.parse(await new Response(akis).text());
+}
+async function gh(G, yol, secenek = {}) {
+  const r = await fetch(`${G.api}/repos/${G.sahip}/${G.depo}/${yol}`, Object.assign({cache: 'no-store'}, secenek, {
+    headers: Object.assign({Authorization: 'Bearer ' + TOKEN, 'X-GitHub-Api-Version': '2022-11-28'}, secenek.headers || {})}));
+  if (r.status === 401) throw new Error('Erişim anahtarının süresi dolmuş olabilir. Yöneticiye haber verin.');
+  return r;
+}
+async function erisimAl(G) {
+  const r = await fetch(`${G.raw}/${G.sahip}/${G.depo}/${G.dal}/erisim.enc?t=${Date.now()}`, {cache: 'no-store'});
+  if (r.status === 404) throw new Error('Henüz hiç rapor oluşturulmamış. İlk raporu yönetici GitHub üzerinden başlatmalı.');
+  if (!r.ok) throw new Error('Bağlantı hatası (' + r.status + ')');
+  TOKEN = (await coz(await r.text())).token;
+}
+async function raporYukle(G) {
+  $('yuk').style.display = 'block';
+  try {
+    const r = await gh(G, `contents/rapor.enc?ref=${G.dal}`, {headers: {Accept: 'application/vnd.github.raw+json'}});
+    if (!r.ok) throw new Error('Rapor alınamadı (' + r.status + ')');
+    const D = await coz(await r.text());
+    SON_RAPOR_ZAMANI = D.olusturma;
+    $('login').style.display = 'none'; $('app').style.display = ''; $('webbar').style.display = 'flex';
+    baslat(D);
+  } finally { $('yuk').style.display = 'none'; }
+}
+const dk = iso => Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+function durumYaz(tur, html) { const d = $('durum'); d.className = tur || ''; d.innerHTML = html; }
+async function sonCalisma(G) {
+  const r = await gh(G, `actions/workflows/${G.is}/runs?per_page=1`);
+  if (!r.ok) return null;
+  const j = await r.json();
+  return (j.workflow_runs || [])[0] || null;
+}
+async function durumKontrol(G, yeniBekleniyor) {
+  let c;
+  try { c = await sonCalisma(G); } catch (e) { c = null; }
+  const temel = `Son güncelleme: <b>${esc(SON_RAPOR_ZAMANI || '—')}</b>`;
+  if (c && c.status !== 'completed') {
+    $('guncelle').disabled = true;
+    durumYaz('calisiyor', `<span class="spin"></span>Güncelleniyor… ${dk(c.run_started_at || c.created_at)} dk · ${temel}`);
+    clearTimeout(IZLE); IZLE = setTimeout(() => durumKontrol(G, true), 15000);
+    return;
+  }
+  $('guncelle').disabled = false;
+  if (c && yeniBekleniyor) {
+    if (c.conclusion === 'success') { await raporYukle(G); durumYaz('ok', '✓ Rapor güncellendi · ' + `Son güncelleme: <b>${esc(SON_RAPOR_ZAMANI)}</b>`); return; }
+    durumYaz('hata', `✕ Güncelleme başarısız oldu (<a href="${esc(c.html_url)}" target="_blank" rel="noopener">ayrıntı</a>) · ${temel}`); return;
+  }
+  durumYaz('', temel);
+}
+async function guncelleBaslat(G) {
+  $('guncelle').disabled = true;
+  durumYaz('calisiyor', '<span class="spin"></span>Güncelleme başlatılıyor…');
+  try {
+    const r = await gh(G, `actions/workflows/${G.is}/dispatches`, {method: 'POST',
+      headers: {'Content-Type': 'application/json', Accept: 'application/vnd.github+json'}, body: JSON.stringify({ref: 'main'})});
+    if (r.status !== 204) throw new Error('Güncelleme başlatılamadı (' + r.status + ')');
+    setTimeout(() => durumKontrol(G, true), 5000);
+  } catch (e) { $('guncelle').disabled = false; durumYaz('hata', esc(e.message)); }
+}
+function girisGoster(G, mesaj) {
+  $('app').style.display = 'none'; $('login').style.display = 'flex'; $('lerr').textContent = mesaj || '';
+  setTimeout(() => $('lpw').focus(), 50);
+  $('lform').onsubmit = async ev => {
+    ev.preventDefault(); $('lbtn').disabled = true; $('lerr').textContent = ''; $('lbtn').textContent = 'Açılıyor…';
+    try {
+      ANAHTAR = await anahtarTuret(G, $('lpw').value);
+      await erisimAl(G); await anahtarSakla(ANAHTAR); await acilis(G);
+    } catch (e) { ANAHTAR = null; $('lerr').textContent = e.message === 'SIFRE' ? 'Şifre hatalı.' : e.message; }
+    $('lbtn').disabled = false; $('lbtn').textContent = 'Giriş yap';
+  };
+}
+async function acilis(G) {
+  await raporYukle(G);
+  $('guncelle').onclick = () => guncelleBaslat(G);
+  $('cikis').onclick = () => { try { sessionStorage.removeItem(OTK); } catch (e) {} location.reload(); };
+  await durumKontrol(G, false);
+}
+async function webBaslat(W) {
+  const G = ghAyar(W);
+  $('app').style.display = 'none';
+  ANAHTAR = await anahtarAl();
+  if (!ANAHTAR) return girisGoster(G);
+  try { await erisimAl(G); await acilis(G); }
+  catch (e) { ANAHTAR = null; girisGoster(G, e.message === 'SIFRE' ? '' : e.message); }
+}
+
+const GOMULU = /*__VERI__*/null;
+const WEB = {};
+if (GOMULU) baslat(GOMULU);
+else if (WEB) webBaslat(WEB);
+else document.body.innerHTML = '<p style="padding:40px">Rapor verisi yok.</p>';
+</script>
+</body>
+</html>
