@@ -63,10 +63,22 @@ def gerekli(ad):
     return v
 
 
+def onceki(ad):
+    """Önceki çalıştırmanın 'veri' dalındaki dosyası (workflow kod/onceki/ altına koyar)."""
+    yol = os.path.join(KOD, "onceki", ad)
+    if os.path.exists(yol) and os.path.getsize(yol) > 0:
+        with open(yol, encoding="utf-8") as f:
+            return f.read()
+    return None
+
+
 def main():
     depo = gerekli("GITHUB_REPOSITORY")
     sifre = gerekli("RAPOR_SIFRESI")
     token = gerekli("WEB_ERISIM_TOKEN")
+    mod = (os.environ.get("BULUT_MOD") or "tam").strip().lower()
+    if mod not in ("tam", "siparis"):
+        mod = "tam"
     if len(sifre) < 12:
         sys.exit("HATA: RAPOR_SIFRESI en az 12 karakter olmalı (şifreli dosyalar herkese açık depoda duruyor).")
 
@@ -81,41 +93,66 @@ def main():
         f.write("[performans]\nsayfa_boyutu = 100\nistek_arasi_bekleme = 0.05\nurun_gecmis_sayfa = 3\nonbellek_gun = 7\n")
     gerekli("POBOL_KULLANICI"); gerekli("POBOL_SIFRE")
 
+    hs.log(f"Mod: {'TAM (stok raporu + siparişler)' if mod == 'tam' else 'SADECE DEPO SİPARİŞLERİ'}")
     hs.log("Şifre anahtarı hazırlanıyor...")
     key = anahtar_turet(sifre, depo)
 
-    db_yolu = os.path.join(KOD, "onbellek.db")
-    enc_yolu = os.path.join(KOD, "onbellek.enc")
-    if os.path.exists(enc_yolu):
-        try:
-            with open(enc_yolu, encoding="utf-8") as f:
-                acik = coz(f.read(), key)
-            with open(db_yolu, "wb") as f:
-                f.write(acik)
-            hs.log(f"Önceki önbellek açıldı ({len(acik) / 1e6:.1f} MB) — sadece yeni günler çekilecek.")
-        except (InvalidTag, ValueError, KeyError, OSError) as e:
-            hs.log(f"Önbellek açılamadı (şifre değişmiş olabilir: {type(e).__name__}). Baştan çekilecek; uzun sürer.")
-            if os.path.exists(db_yolu):
-                os.remove(db_yolu)
-    else:
-        hs.log("Önbellek yok — ilk çalıştırma, son 200 günün verisi çekilecek (uzun sürer).")
-
     ayar = hs.Ayarlar(ayar_yolu)
     api = hs.PobolApi(ayar)
-    try:
-        veri = hs.rapor_uret(ayar, api, onbellek_yolu=db_yolu)
-    except hs.ApiHatasi as e:
-        sys.exit("HATA: " + str(e))
 
     cikti = os.path.join(os.getcwd(), "cikti")
     os.makedirs(cikti, exist_ok=True)
     yaz = lambda ad, metin: open(os.path.join(cikti, ad), "w", encoding="utf-8").write(metin)
-    yaz("rapor.enc", sifrele(json.dumps(veri, ensure_ascii=False).encode("utf-8"), key, depo))
+
+    def onceki_dosyayi_koru(ad):
+        eski = onceki(ad)
+        if eski:
+            yaz(ad, eski)
+            return True
+        return False
+
+    if mod == "tam":
+        db_yolu = os.path.join(KOD, "onbellek.db")
+        eski_onbellek = onceki("onbellek.enc")
+        if eski_onbellek:
+            try:
+                acik = coz(eski_onbellek, key)
+                with open(db_yolu, "wb") as f:
+                    f.write(acik)
+                hs.log(f"Önceki önbellek açıldı ({len(acik) / 1e6:.1f} MB) — sadece yeni günler çekilecek.")
+            except (InvalidTag, ValueError, KeyError, OSError) as e:
+                hs.log(f"Önbellek açılamadı (şifre değişmiş olabilir: {type(e).__name__}). Baştan çekilecek; uzun sürer.")
+                if os.path.exists(db_yolu):
+                    os.remove(db_yolu)
+        else:
+            hs.log("Önbellek yok — ilk çalıştırma, son 200 günün verisi çekilecek (uzun sürer).")
+
+        try:
+            veri = hs.rapor_uret(ayar, api, onbellek_yolu=db_yolu)
+        except hs.ApiHatasi as e:
+            sys.exit("HATA: " + str(e))
+        yaz("rapor.enc", sifrele(json.dumps(veri, ensure_ascii=False).encode("utf-8"), key, depo))
+        with open(db_yolu, "rb") as f:
+            yaz("onbellek.enc", sifrele(f.read(), key, depo))
+    else:
+        # Stok raporu ve önbelleğe dokunma: önceki dosyalar aynen kalsın
+        for ad in ("rapor.enc", "onbellek.enc"):
+            if not onceki_dosyayi_koru(ad):
+                hs.log(f"  Not: önceki {ad} yok (henüz tam güncelleme yapılmamış olabilir).")
+
+    # Depo siparişleri (iki modda da). Hata olursa stok raporu yine yayınlansın.
+    try:
+        sip = hs.depo_siparisleri(api, gun=int(os.environ.get("SIPARIS_GUN") or 4))
+        yaz("siparis.enc", sifrele(json.dumps(sip, ensure_ascii=False).encode("utf-8"), key, depo))
+    except hs.ApiHatasi as e:
+        hs.log("UYARI: depo siparişleri çekilemedi: " + str(e))
+        if mod == "siparis":
+            sys.exit("HATA: depo siparişleri çekilemedi: " + str(e))
+        onceki_dosyayi_koru("siparis.enc")
+
     yaz("erisim.enc", sifrele(json.dumps({"token": token}).encode("utf-8"), key, depo))
-    with open(db_yolu, "rb") as f:
-        yaz("onbellek.enc", sifrele(f.read(), key, depo))
     yaz("README.md", "Bu dal otomatik oluşturulur. Dosyalar şifrelidir; elle değiştirmeyin.\n")
-    hs.log("Şifreli rapor ve önbellek hazır.")
+    hs.log("Şifreli dosyalar hazır.")
 
 
 if __name__ == "__main__":
