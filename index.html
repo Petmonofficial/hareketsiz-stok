@@ -151,13 +151,14 @@
   .sbar .bilgi .uyari{color:var(--org)}
   .sbar label.chk{white-space:nowrap}
   .sbar .bekle{width:62px;padding:6px 8px;text-align:center}
-  #drop{border:2px dashed var(--line2);border-radius:16px;padding:34px 20px;text-align:center;cursor:pointer;transition:.15s;margin-bottom:14px;color:var(--tx2)}
-  #drop:hover,#drop.ust{border-color:var(--ac);background:var(--ac2);color:var(--tx)}
-  #drop .b{font-size:17px;font-weight:650;color:var(--tx);margin-bottom:6px}
-  #drop .k{font-size:12px;color:var(--tx3);margin-top:8px;line-height:1.6}
-  #drop.kucuk{padding:12px 16px;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;text-align:left}
-  #drop.kucuk .b{font-size:14px;margin:0}
-  #drop.kucuk .k{margin:0}
+  .drops{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .drop{border:2px dashed var(--line2);border-radius:16px;padding:26px 18px;text-align:center;cursor:pointer;transition:.15s;color:var(--tx2)}
+  .drop:hover,.drop.ust{border-color:var(--ac);background:var(--ac2);color:var(--tx)}
+  .drop .b{font-size:16px;font-weight:650;color:var(--tx);margin-bottom:6px}
+  .drop .k{font-size:12px;color:var(--tx3);margin-top:8px;line-height:1.6}
+  .drop.dolu{border-style:solid;border-color:rgba(47,208,140,.45);padding:14px 16px}
+  .drop.dolu .b{color:var(--ac);font-size:14px}
+  @media (max-width:700px){.drops{grid-template-columns:1fr}}
   .serr{padding:14px 16px;margin-bottom:14px;color:var(--red);border-color:rgba(235,87,87,.35)}
   .sbanner{padding:12px 16px;margin-bottom:14px;font-size:13px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
   .sbanner.org{border-color:rgba(242,153,74,.4);color:var(--org)}
@@ -214,7 +215,7 @@
     <div class="hright">
       <div id="webbar">
         <span id="durum"></span>
-        <button class="btn sm pri" id="guncelle" title="Stok raporunu ve depo siparişlerini günceller (birkaç dakika)">↻ Güncelle</button>
+        <button class="btn sm pri" id="guncelle" title="Stok raporunu günceller (birkaç dakika)">↻ Güncelle</button>
         <button class="btn sm" id="cikis">Çıkış</button>
       </div>
     </div>
@@ -223,18 +224,25 @@
   <!-- ===================== SİPARİŞ KONTROL ===================== -->
   <div id="vSip" style="display:none">
     <div class="glass sbar">
-      <div class="bilgi" id="sipbilgi">Depo siparişleri yükleniyor…</div>
+      <div class="bilgi" id="sipbilgi"></div>
       <label class="chk" title="Sipariş entegrapi'ye düştükten sonra depoya akması için tanınan süre">Akış payı
         <input class="inp bekle" id="bekle" type="number" min="5" max="240" step="5" value="30"> dk</label>
-      <button class="btn sm pri" id="sipguncelle" title="Sadece depo siparişlerini çeker (stok raporuna dokunmaz)">⚡ Depo siparişlerini güncelle</button>
+      <button class="btn sm" id="siptemizle">Dosyaları temizle</button>
     </div>
-    <div id="drop" class="glass">
-      <div class="b">entegrapi sipariş Excel'ini buraya sürükleyin</div>
-      <div>ya da tıklayıp dosyayı seçin (.xlsx)</div>
-      <div class="k">entegrapi → Sipariş Yönetimi → Siparişler → tarih filtresi (ör. son 2 gün) → İşlemler → Excel'e aktar.<br>
-        Dosya hiçbir yere yüklenmez; karşılaştırma bu tarayıcıda yapılır.</div>
+    <div class="drops">
+      <div id="dropE" class="glass drop" data-t="E">
+        <div class="b">1) entegrapi Excel'i</div>
+        <div>buraya sürükleyin ya da tıklayın (.xlsx)</div>
+        <div class="k">entegrapi → Sipariş Yönetimi → Siparişler → tarih filtresi (ör. son 2 gün) → İşlemler → Excel'e aktar</div>
+      </div>
+      <div id="dropD" class="glass drop" data-t="D">
+        <div class="b">2) Depo Excel'i</div>
+        <div>buraya sürükleyin ya da tıklayın (.xlsx)</div>
+        <div class="k">depo.yemgross → Siparişler → aynı tarih filtresi (1 gün fazlası daha iyi) → İşlemler → Excel'e aktar</div>
+      </div>
     </div>
-    <input type="file" id="dosya" accept=".xlsx,.csv" hidden>
+    <div class="muted" style="font-size:12px;margin:-4px 0 14px">İki dosyayı aynı anda da sürükleyebilirsiniz; hangisinin hangisi olduğu otomatik anlaşılır. Dosyalar hiçbir yere yüklenmez, karşılaştırma bu tarayıcıda yapılır.</div>
+    <input type="file" id="dosya" accept=".xlsx,.csv" multiple hidden>
     <div id="sipsonuc"></div>
   </div>
 
@@ -498,11 +506,11 @@ const KAT = {
   yok:   {ad: 'Depoya düşmedi', cls: 'yok', ac: 'Akış süresi geçtiği hâlde depoda yok — kontrol edilmeli'},
   ok:    {ad: 'Depoda', cls: 'ok', ac: 'Depoya düşmüş'},
   yolda: {ad: 'Yolda', cls: 'bek', ac: 'Akış payı henüz dolmadı'},
-  yeni:  {ad: 'Depo verisi eski', cls: 'bek', ac: 'Sipariş, depo verisinin çekildiği andan sonra gelmiş — depo siparişlerini güncelleyin'},
+  yeni:  {ad: 'Depo Excel’i eski', cls: 'bek', ac: 'Sipariş, depo Excel’inin alındığı andan sonra gelmiş — depo Excel’ini yeniden alın'},
   fba:   {ad: 'Amazon deposundan?', cls: 'fba', ac: 'Amazon, kargoya verildi, depo durumu “İşlem Bekliyor”: büyük ihtimalle Amazon kendi deposundan gönderdi'},
   odeme: {ad: 'Ödeme bekliyor', cls: 'dis', ac: 'Havale/EFT onayı beklenen siparişler depoya hemen aktarılmaz'},
   iptal: {ad: 'İptal/İade', cls: 'dis', ac: 'İptal veya iade edilmiş; depoya düşmemesi normal'},
-  eski:  {ad: 'Aralık dışı', cls: 'dis', ac: 'Depo verisinin kapsadığı günlerden eski'},
+  eski:  {ad: 'Aralık dışı', cls: 'dis', ac: 'Depo Excel’inin kapsadığı günlerden eski'},
 };
 const GRUP = [  // ekrandaki filtre düğmeleri
   {k: 'sorun', ad: '❌ Depoya düşmeyen', kat: ['yok']},
@@ -511,8 +519,9 @@ const GRUP = [  // ekrandaki filtre düğmeleri
   {k: 'ok', ad: '✓ Depoda', kat: ['ok']},
   {k: 'hepsi', ad: 'Tümü', kat: null},
 ];
-let SIP = null;          // depo sipariş verisi (siparis.enc)
-let EXCEL = null;        // okunan Excel {ad, olusturma, satirlar}
+let SIP = null;          // depo Excel'inden üretilen karşılaştırma verisi
+let EXCEL = null;        // entegrapi Excel'i {ad, olusturma, satirlar}
+let DEPOX = null;        // depo Excel'i {ad, olusturma, satirlar}
 let SS = {grup: 'sorun', kanal: null};  // ekran durumu
 
 // --- yardımcılar
@@ -667,23 +676,45 @@ function karsilastir() {
   });
 }
 
+const pad2 = n => String(n).padStart(2, '0');
+const isoYerel = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:00`;
+// Depo Excel'inden karşılaştırma verisi: kod + depo durumu + tarih; zaman referansı = Excel'in alındığı an
+function depoVerisi(dx) {
+  const tarihler = dx.satirlar.map(s => s.tarih).filter(Boolean).sort((a, b) => a - b);
+  const ilk = tarihler[0] || new Date();
+  return {
+    cekim: isoYerel(dx.olusturma || new Date()),
+    bas: `${ilk.getFullYear()}-${pad2(ilk.getMonth() + 1)}-${pad2(ilk.getDate())}`,
+    liste: dx.satirlar.map(s => [s.kod, '', '', '', '', s.depoDurum, s.tarih ? isoYerel(s.tarih) : '']),
+  };
+}
 function sipBilgiYaz() {
   const el = $('sipbilgi');
-  if (!SIP) { el.innerHTML = 'Depo siparişleri henüz çekilmemiş. <b>⚡ Depo siparişlerini güncelle</b> düğmesine basın.'; return; }
-  const cekim = yerelTarih(SIP.cekim), yas = Math.round((Date.now() - cekim) / 60000);
-  let h = `Depo siparişleri: <b>${tGoster(cekim)}</b> itibarıyla · ${nf.format(SIP.liste.length)} sipariş (${fmtDate(SIP.bas)} – bugün)`;
-  if (yas > 60) h += ` · <span class="uyari">${sureYaz(yas)} önce çekildi</span>`;
-  if (EXCEL) h += `<br>Excel: <b>${esc(EXCEL.ad || 'dosya')}</b> · ${nf.format(EXCEL.satirlar.length)} sipariş${EXCEL.olusturma ? ' · ' + tGoster(EXCEL.olusturma) + ' tarihli' : ''}`;
-  el.innerHTML = h;
+  const satir = (ad, x) => x
+    ? `${ad}: <b>${esc(x.ad || 'dosya')}</b> · ${nf.format(x.satirlar.length)} sipariş${x.olusturma ? ' · ' + tGoster(x.olusturma) + ' tarihli' : ''}`
+    : `${ad}: <span class="uyari">henüz eklenmedi</span>`;
+  el.innerHTML = satir('entegrapi Excel', EXCEL) + '<br>' + satir('Depo Excel', DEPOX);
+}
+function dropYaz(id, x, baslik) {
+  const d = $(id);
+  d.classList.toggle('dolu', !!x);
+  d.innerHTML = x
+    ? `<div class="b">✓ ${baslik}: ${esc(x.ad || 'dosya')}</div><div class="k">${nf.format(x.satirlar.length)} sipariş · değiştirmek için yeni dosya sürükleyin</div>`
+    : (id === 'dropE'
+      ? `<div class="b">1) entegrapi Excel'i</div><div>buraya sürükleyin ya da tıklayın (.xlsx)</div><div class="k">entegrapi → Sipariş Yönetimi → Siparişler → tarih filtresi (ör. son 2 gün) → İşlemler → Excel'e aktar</div>`
+      : `<div class="b">2) Depo Excel'i</div><div>buraya sürükleyin ya da tıklayın (.xlsx)</div><div class="k">depo.yemgross → Siparişler → aynı tarih filtresi (1 gün fazlası daha iyi) → İşlemler → Excel'e aktar</div>`);
 }
 
 function renderSip() {
   sipBilgiYaz();
-  const kutu = $('sipsonuc'), drop = $('drop');
-  drop.classList.toggle('kucuk', !!EXCEL);
-  if (EXCEL) drop.innerHTML = `<div class="b">📄 ${esc(EXCEL.ad || 'Excel')}</div><div class="k">Yeni dosya için buraya sürükleyin ya da tıklayın</div>`;
+  dropYaz('dropE', EXCEL, 'entegrapi'); dropYaz('dropD', DEPOX, 'Depo');
+  const kutu = $('sipsonuc');
+  SIP = DEPOX ? depoVerisi(DEPOX) : null;
   const R = karsilastir();
-  if (!R) { kutu.innerHTML = ''; sipSayac(null); return; }
+  if (!R) {
+    kutu.querySelectorAll(':scope > :not(.serr)').forEach(e => e.remove());
+    sipSayac(null); return;
+  }
 
   const say = k => R.filter(r => r.kat === k).length;
   const yok = say('yok'), bek = say('yolda') + say('yeni');
@@ -691,7 +722,7 @@ function renderSip() {
   let h = '';
   // depo verisi Excel'den eskiyse uyar
   const cekim = yerelTarih(SIP.cekim);
-  if (say('yeni') > 0) h += `<div class="glass sbanner org">⚠️ ${say('yeni')} sipariş, depo verisinin çekildiği saatten (${tGoster(cekim)}) sonra gelmiş. Kesin sonuç için <button class="btn sm pri" onclick="$('sipguncelle').click()">⚡ Depo siparişlerini güncelle</button></div>`;
+  if (say('yeni') > 0) h += `<div class="glass sbanner org">⚠️ ${say('yeni')} sipariş, depo Excel'inin alındığı saatten (${tGoster(cekim)}) sonra gelmiş. Kesin sonuç için depo Excel'ini yeniden alıp sürükleyin.</div>`;
   else if (!yok) h += `<div class="glass sbanner ok">✓ Akış payı geçmiş tüm siparişler depoya düşmüş.</div>`;
 
   // özet kartları
@@ -739,10 +770,10 @@ function renderSip() {
         <td class="r">${r.tutar ? '₺' + nf2.format(r.tutar) : ''}</td></tr>`).join('')
       : `<tr><td colspan="8"><div class="empty">${SS.grup === 'sorun' ? 'Depoya düşmeyen sipariş yok 🎉' : 'Bu filtrede sipariş yok'}</div></td></tr>`}</tbody>
     </table></div></div>
-    <footer class="glass"><b>Nasıl karar veriliyor?</b> Excel'deki her sipariş kodu, depodaki siparişlerin kodu (ve pazaryeri sipariş no) ile eşleştirilir.
-      Bulunamayan sipariş; depo verisinin çekildiği saatten en az <b>${esc($('bekle').value)} dk</b> önce geldiyse <b>“Depoya düşmedi”</b> sayılır, daha yeniyse <b>“Yolda”</b>.
+    <footer class="glass"><b>Nasıl karar veriliyor?</b> entegrapi Excel'indeki her sipariş kodu, depo Excel'indeki sipariş kodlarıyla eşleştirilir.
+      Bulunamayan sipariş; depo Excel'inin alındığı saatten en az <b>${esc($('bekle').value)} dk</b> önce geldiyse <b>“Depoya düşmedi”</b> sayılır, daha yeniyse <b>“Yolda”</b>.
       İptal/iade, havale onayı bekleyen ve Amazon'un kendi deposundan gönderdiği (kargoya verildi + depo durumu “İşlem Bekliyor”) siparişler hata sayılmaz.
-      Depo verisi son ${esc(SIP.gun)} günü kapsar; daha eski siparişler “Aralık dışı” görünür.</footer>`;
+      Depo Excel'i ${fmtDate(SIP.bas)} tarihinden itibaren kapsıyor; daha eski siparişler “Aralık dışı” görünür. Bu yüzden depo Excel'ini entegrapi'ninkinden 1 gün geniş almak iyi olur.</footer>`;
   kutu.innerHTML = h;
 
   kutu.querySelectorAll('.kanal').forEach(k => k.onclick = () => { SS.kanal = SS.kanal === k.dataset.k ? null : k.dataset.k; renderSip(); });
@@ -772,20 +803,41 @@ function sipSayac(n) {
   if (n == null) { c.style.display = 'none'; return; }
   c.style.display = ''; c.textContent = n; c.classList.toggle('kirmizi', n > 0);
 }
-async function dosyaYukle(f) {
-  if (!f) return;
-  const eski = $('sipsonuc').querySelector('.serr'); if (eski) eski.remove();
-  try {
-    let satirlar;
-    if (/\.csv$/i.test(f.name)) satirlar = csvOku(await f.text());
-    else if (/\.xls$/i.test(f.name)) throw new Error('Eski .xls biçimi desteklenmiyor. Dosyayı Excel\'de açıp “.xlsx” olarak kaydedin.');
-    else satirlar = await xlsxOku(await f.arrayBuffer());
-    EXCEL = excelCoz(satirlar, f.name);
-    SS.grup = 'sorun'; SS.kanal = null;
-    renderSip();
-  } catch (e) {
-    $('sipsonuc').insertAdjacentHTML('afterbegin', `<div class="glass serr">✕ ${esc(e.message)}</div>`);
+async function dosyaOku(f) {
+  let satirlar;
+  if (/\.csv$/i.test(f.name)) satirlar = csvOku(await f.text());
+  else if (/\.xls$/i.test(f.name)) throw new Error(f.name + ': eski .xls biçimi desteklenmiyor. Dosyayı Excel\'de açıp “.xlsx” olarak kaydedin.');
+  else satirlar = await xlsxOku(await f.arrayBuffer());
+  const x = excelCoz(satirlar, f.name);
+  if (!x.olusturma && f.lastModified) x.olusturma = new Date(f.lastModified);  // başlıkta saat yoksa indirme anı
+  // Depo Excel'inde kanal çoğunlukla "Pobol" görünür (siparişler depoya entegrapi'den gelir)
+  const pobol = x.satirlar.filter(s => /pobol/i.test(s.kanal)).length;
+  x.tur = pobol > x.satirlar.length / 2 ? 'D' : 'E';
+  return x;
+}
+// hedef: 'E' (entegrapi), 'D' (depo) ya da null (otomatik)
+async function dosyaYukle(dosyalar, hedef) {
+  dosyalar = [...(dosyalar || [])].filter(Boolean);
+  if (!dosyalar.length) return;
+  $('sipsonuc').querySelectorAll('.serr').forEach(e => e.remove());
+  const hatalar = [];
+  const okunan = [];
+  for (const f of dosyalar) {
+    try { okunan.push(await dosyaOku(f)); } catch (e) { hatalar.push(e.message); }
   }
+  if (okunan.length === 1 && hedef) okunan[0].hedef = hedef;          // tek dosya bir alana bırakıldıysa o alana
+  else okunan.forEach(x => x.hedef = x.tur);                           // aksi hâlde otomatik
+  if (okunan.length === 2 && okunan[0].hedef === okunan[1].hedef) {     // ikisi aynı türe düştüyse sırayla dağıt
+    okunan[0].hedef = 'E'; okunan[1].hedef = 'D';
+  }
+  for (const x of okunan) {
+    if (x.hedef === 'D') DEPOX = x; else EXCEL = x;
+    if (hedef && okunan.length === 1 && x.tur !== hedef)
+      hatalar.push(`${x.ad}: bu dosya ${x.tur === 'D' ? 'depo' : 'entegrapi'} Excel'ine benziyor; doğru alana bıraktığınızdan emin olun.`);
+  }
+  SS.grup = 'sorun'; SS.kanal = null;
+  renderSip();
+  if (hatalar.length) $('sipsonuc').insertAdjacentHTML('afterbegin', hatalar.map(m => `<div class="glass serr">✕ ${esc(m)}</div>`).join(''));
 }
 function gorunumSec(g) {
   GORUNUM = g;
@@ -800,16 +852,20 @@ function gorunumSec(g) {
 function sipKur() {
   $('gorunum').style.display = 'flex';
   document.querySelectorAll('#gorunum .tab').forEach(b => b.onclick = () => gorunumSec(b.dataset.g));
-  const drop = $('drop'), inp = $('dosya');
-  drop.onclick = () => inp.click();
-  inp.onchange = () => { dosyaYukle(inp.files[0]); inp.value = ''; };
-  ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('ust'); }));
-  ['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('ust'); }));
-  drop.addEventListener('drop', e => dosyaYukle(e.dataTransfer.files[0]));
-  // sayfanın herhangi bir yerine bırakılan dosya da kabul edilsin (sipariş görünümündeyken)
+  const inp = $('dosya');
+  let hedef = null;
+  inp.onchange = () => { dosyaYukle(inp.files, hedef); inp.value = ''; };
+  document.querySelectorAll('.drop').forEach(drop => {
+    drop.onclick = () => { hedef = drop.dataset.t; inp.click(); };
+    ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('ust'); }));
+    ['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('ust'); }));
+    drop.addEventListener('drop', e => { e.stopPropagation(); dosyaYukle(e.dataTransfer.files, drop.dataset.t); });
+  });
+  // sayfanın başka bir yerine bırakılan dosyalar da kabul edilsin (tür otomatik anlaşılır)
   window.addEventListener('dragover', e => { if (GORUNUM === 'sip') e.preventDefault(); });
-  window.addEventListener('drop', e => { if (GORUNUM === 'sip' && !drop.contains(e.target)) { e.preventDefault(); dosyaYukle(e.dataTransfer.files[0]); } });
+  window.addEventListener('drop', e => { if (GORUNUM === 'sip') { e.preventDefault(); dosyaYukle(e.dataTransfer.files, null); } });
   $('bekle').onchange = () => renderSip();
+  $('siptemizle').onclick = () => { EXCEL = DEPOX = null; $('sipsonuc').innerHTML = ''; renderSip(); };
   let g = 'stok'; try { g = sessionStorage.getItem('hs_gorunum') || 'stok'; } catch (e) {}
   gorunumSec(g);
 }
@@ -876,13 +932,6 @@ async function raporYukle(G) {
     baslat(D);
   } finally { $('yuk').style.display = 'none'; }
 }
-async function siparisYukle(G) {
-  try {
-    const r = await gh(G, `contents/siparis.enc?ref=${G.dal}`, {headers: {Accept: 'application/vnd.github.raw+json'}});
-    SIP = r.ok ? await coz(await r.text()) : null;
-  } catch (e) { if (e.message === 'SIFRE') throw e; SIP = null; }
-  if (GORUNUM === 'sip') renderSip(); else sipBilgiYaz();
-}
 const dk = iso => Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
 function durumYaz(tur, html) { const d = $('durum'); d.className = tur || ''; d.innerHTML = html; }
 async function sonCalisma(G) {
@@ -895,36 +944,29 @@ async function durumKontrol(G, yeniBekleniyor) {
   let c;
   try { c = await sonCalisma(G); } catch (e) { c = null; }
   const temel = `Stok raporu: <b>${esc(SON_RAPOR_ZAMANI || '—')}</b>`;
-  const dugmeler = acik => ['guncelle', 'sipguncelle'].forEach(id => $(id).disabled = !acik);
   if (c && c.status !== 'completed') {
-    dugmeler(false);
-    const ne = /sipari/i.test(c.display_title || c.name || '') ? 'Depo siparişleri çekiliyor' : 'Güncelleniyor';
-    durumYaz('calisiyor', `<span class="spin"></span>${ne}… ${dk(c.run_started_at || c.created_at)} dk · ${temel}`);
-    clearTimeout(IZLE); IZLE = setTimeout(() => durumKontrol(G, true), 10000);
+    $('guncelle').disabled = true;
+    durumYaz('calisiyor', `<span class="spin"></span>Güncelleniyor… ${dk(c.run_started_at || c.created_at)} dk · ${temel}`);
+    clearTimeout(IZLE); IZLE = setTimeout(() => durumKontrol(G, true), 15000);
     return;
   }
-  dugmeler(true);
+  $('guncelle').disabled = false;
   if (c && yeniBekleniyor) {
-    if (c.conclusion === 'success') {
-      const sadeceSip = /sipari/i.test(c.display_title || '');
-      if (!sadeceSip) await raporYukle(G);
-      await siparisYukle(G);
-      durumYaz('ok', (sadeceSip ? '✓ Depo siparişleri güncellendi · ' : '✓ Rapor güncellendi · ') + `Stok raporu: <b>${esc(SON_RAPOR_ZAMANI)}</b>`); return;
-    }
+    if (c.conclusion === 'success') { await raporYukle(G); durumYaz('ok', '✓ Rapor güncellendi · ' + `Stok raporu: <b>${esc(SON_RAPOR_ZAMANI)}</b>`); return; }
     durumYaz('hata', `✕ Güncelleme başarısız oldu (<a href="${esc(c.html_url)}" target="_blank" rel="noopener">ayrıntı</a>) · ${temel}`); return;
   }
   durumYaz('', temel);
 }
-async function guncelleBaslat(G, mod = 'tam') {
-  ['guncelle', 'sipguncelle'].forEach(id => $(id).disabled = true);
-  durumYaz('calisiyor', '<span class="spin"></span>' + (mod === 'siparis' ? 'Depo siparişleri isteniyor…' : 'Güncelleme başlatılıyor…'));
+async function guncelleBaslat(G) {
+  $('guncelle').disabled = true;
+  durumYaz('calisiyor', '<span class="spin"></span>Güncelleme başlatılıyor…');
   try {
     const r = await gh(G, `actions/workflows/${G.is}/dispatches`, {method: 'POST',
       headers: {'Content-Type': 'application/json', Accept: 'application/vnd.github+json'},
-      body: JSON.stringify({ref: 'main', inputs: {mod}})});
+      body: JSON.stringify({ref: 'main', inputs: {mod: 'tam'}})});
     if (r.status !== 204) throw new Error('Güncelleme başlatılamadı (' + r.status + ')');
     setTimeout(() => durumKontrol(G, true), 5000);
-  } catch (e) { ['guncelle', 'sipguncelle'].forEach(id => $(id).disabled = false); durumYaz('hata', esc(e.message)); }
+  } catch (e) { $('guncelle').disabled = false; durumYaz('hata', esc(e.message)); }
 }
 function girisGoster(G, mesaj) {
   $('app').style.display = 'none'; $('login').style.display = 'flex'; $('lerr').textContent = mesaj || '';
@@ -941,9 +983,7 @@ function girisGoster(G, mesaj) {
 async function acilis(G) {
   await raporYukle(G);
   sipKur();
-  await siparisYukle(G);
-  $('guncelle').onclick = () => guncelleBaslat(G, 'tam');
-  $('sipguncelle').onclick = () => guncelleBaslat(G, 'siparis');
+  $('guncelle').onclick = () => guncelleBaslat(G);
   $('cikis').onclick = () => { try { sessionStorage.removeItem(OTK); } catch (e) {} location.reload(); };
   await durumKontrol(G, false);
 }
