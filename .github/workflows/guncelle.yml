@@ -1,7 +1,15 @@
 name: Raporu güncelle
+run-name: ${{ inputs.mod == 'siparis' && 'Depo siparişleri' || 'Tam güncelleme' }}
 
 on:
-  workflow_dispatch:   # web sayfasındaki "Güncelle" butonu ya da Actions sekmesindeki "Run workflow"
+  workflow_dispatch:   # web sayfasındaki butonlar ya da Actions sekmesindeki "Run workflow"
+    inputs:
+      mod:
+        description: "tam = stok raporu + depo siparişleri · siparis = sadece depo siparişleri (hızlı)"
+        required: false
+        default: tam
+        type: choice
+        options: [tam, siparis]
 
 concurrency:
   group: hareketsiz-stok
@@ -26,14 +34,19 @@ jobs:
       - name: Gerekli paket
         run: pip install --quiet cryptography
 
-      - name: Önceki önbelleği al
+      - name: Önceki dosyaları al
         run: |
+          mkdir -p kod/onceki
           if git fetch --quiet --depth 1 origin veri 2>/dev/null; then
-            git show FETCH_HEAD:onbellek.enc > kod/onbellek.enc 2>/dev/null || rm -f kod/onbellek.enc
+            for f in onbellek.enc rapor.enc siparis.enc; do
+              git show "FETCH_HEAD:$f" > "kod/onceki/$f" 2>/dev/null || rm -f "kod/onceki/$f"
+            done
           fi
+          ls -la kod/onceki
 
-      - name: Pobol'dan veriyi çek ve raporu hazırla
+      - name: Pobol'dan veriyi çek
         env:
+          BULUT_MOD: ${{ inputs.mod || 'tam' }}
           POBOL_KULLANICI: ${{ secrets.POBOL_KULLANICI }}
           POBOL_SIFRE: ${{ secrets.POBOL_SIFRE }}
           RAPOR_SIFRESI: ${{ secrets.RAPOR_SIFRESI }}
@@ -51,5 +64,5 @@ jobs:
           git config user.name "rapor-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit --quiet -m "Rapor $(date '+%d.%m.%Y %H:%M')"
+          git commit --quiet -m "Rapor $(date '+%d.%m.%Y %H:%M') (${{ inputs.mod || 'tam' }})"
           git push --quiet --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" veri
