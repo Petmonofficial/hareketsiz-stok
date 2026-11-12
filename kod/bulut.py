@@ -140,15 +140,13 @@ def main():
             if not onceki_dosyayi_koru(ad):
                 hs.log(f"  Not: önceki {ad} yok (henüz tam güncelleme yapılmamış olabilir).")
 
-    # Depo siparişleri (iki modda da). Hata olursa stok raporu yine yayınlansın.
-    try:
-        sip = hs.depo_siparisleri(api, gun=int(os.environ.get("SIPARIS_GUN") or 4))
-        yaz("siparis.enc", sifrele(json.dumps(sip, ensure_ascii=False).encode("utf-8"), key, depo))
-    except hs.ApiHatasi as e:
-        hs.log("UYARI: depo siparişleri çekilemedi: " + str(e))
-        if mod == "siparis":
+    # Depo siparişleri sadece 'siparis' modunda denenir (tam güncelleme eskisi gibi yalnızca stok raporu).
+    if mod == "siparis":
+        try:
+            sip = hs.depo_siparisleri(api, gun=int(os.environ.get("SIPARIS_GUN") or 4))
+            yaz("siparis.enc", sifrele(json.dumps(sip, ensure_ascii=False).encode("utf-8"), key, depo))
+        except hs.ApiHatasi as e:
             sys.exit("HATA: depo siparişleri çekilemedi: " + str(e))
-        onceki_dosyayi_koru("siparis.enc")
 
     yaz("erisim.enc", sifrele(json.dumps({"token": token}).encode("utf-8"), key, depo))
     yaz("README.md", "Bu dal otomatik oluşturulur. Dosyalar şifrelidir; elle değiştirmeyin.\n")
