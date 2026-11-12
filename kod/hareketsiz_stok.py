@@ -158,12 +158,13 @@ class PobolApi:
         self.token = tok
         log("API girişi başarılı.")
 
-    def get(self, model, params):
+    def get(self, model, params, en_fazla_deneme=6):
         if not self.token:
             self.giris()
         url = f"{self.a.adres}/v2/{model}?{urllib.parse.urlencode(params, doseq=True)}"
         token_denemesi = 0
-        for deneme in range(6):
+        govde_yazildi = False
+        for deneme in range(en_fazla_deneme):
             hdr = {
                 "Accept": "application/json",
                 "Authorization": ("Bearer " + self.token) if self.bearer else self.token,
@@ -177,11 +178,20 @@ class PobolApi:
                 if e.code in (401, 403):
                     js = {"status": "failure", "message": f"token yetkisiz (HTTP {e.code})"}
                 else:
-                    log(f"  HTTP {e.code} — tekrar denenecek ({deneme + 1}/6)")
+                    if not govde_yazildi:  # sunucunun hata mesajını bir kez göster (teşhis için)
+                        govde_yazildi = True
+                        try:
+                            ic = e.read().decode("utf-8", "replace")
+                            ic = " ".join(ic.split())[:300]
+                        except Exception:
+                            ic = ""
+                        if ic:
+                            log(f"  Sunucu cevabı: {ic}")
+                    log(f"  HTTP {e.code} — tekrar denenecek ({deneme + 1}/{en_fazla_deneme})")
                     time.sleep(2 * (deneme + 1))
                     continue
             except (urllib.error.URLError, TimeoutError, ConnectionError, json.JSONDecodeError) as e:
-                log(f"  Bağlantı/okuma hatası: {e} — tekrar denenecek ({deneme + 1}/6)")
+                log(f"  Bağlantı/okuma hatası: {e} — tekrar denenecek ({deneme + 1}/{en_fazla_deneme})")
                 time.sleep(2 * (deneme + 1))
                 continue
 
@@ -201,7 +211,7 @@ class PobolApi:
                         continue
                 raise ApiHatasi(f"{model}: {msg}")
             return js
-        raise ApiHatasi(f"{model}: istek 6 denemede de başarısız oldu.")
+        raise ApiHatasi(f"{model}: istek {en_fazla_deneme} denemede de başarısız oldu.")
 
     @staticmethod
     def satirlar(js):
@@ -217,15 +227,16 @@ class PobolApi:
             return js
         return []
 
-    def sayfali(self, model, sorgu=None, en_fazla_sayfa=None, ust_sinir=None):
+    def sayfali(self, model, sorgu=None, en_fazla_sayfa=None, ust_sinir=None, boyut=None, deneme=6):
         """Tüm sayfaları dolaşır; her sayfanın satırlarını yield eder."""
         sorgu = dict(sorgu or {})
+        boyut = boyut or self.a.sayfa_boyutu
         sayfa = 1
         onceki_ilk = None
         while True:
-            params = {"pagination[page]": sayfa, "pagination[perpage]": self.a.sayfa_boyutu}
+            params = {"pagination[page]": sayfa, "pagination[perpage]": boyut}
             params.update(sorgu)
-            js = self.get(model, params)
+            js = self.get(model, params, en_fazla_deneme=deneme)
             rows = self.satirlar(js)
             meta = js.get("meta") if isinstance(js, dict) else None
             meta = meta if isinstance(meta, dict) else {}
@@ -245,7 +256,7 @@ class PobolApi:
             yield rows, sayfa, sayfalar, toplam
             if sayfalar and sayfa >= sayfalar:
                 break
-            if not sayfalar and len(rows) < self.a.sayfa_boyutu:
+            if not sayfalar and len(rows) < boyut:
                 break
             if en_fazla_sayfa and sayfa >= en_fazla_sayfa:
                 break
@@ -695,28 +706,79 @@ def depo_siparisleri(api: "PobolApi", gun=4):
     """
     simdi = dt.datetime.now()
     bas = (simdi - dt.timedelta(days=gun - 1)).date()
-    aralik = f"{bas:%d/%m/%Y} 0:00 - {simdi:%d/%m/%Y} 23:59"
+    alt_sinir = dt.datetime.combine(bas, dt.time())
     log(f"Depo siparişleri çekiliyor ({bas:%d.%m.%Y} – {simdi:%d.%m.%Y})...")
+
+    def satir(r):
+        kod = alan(r, "orders_ordercode", "ordercode")
+        if not kod:
+            return None
+        t = tarih(alan(r, "orders_orderdate", "orderdate", son_ek="orderdate"))
+        return [
+            str(kod).strip(),
+            str(alan(r, "orders_market_place_order_id", "market_place_order_id") or ""),
+            str(alan(r, "orders_type", "orders_flttype", "type") or ""),
+            str(alan(r, "orders_market_place_type", "market_place_type") or ""),
+            str(alan(r, "orders_status", "status") or ""),
+            str(alan(r, "orders_substatus", "substatus") or ""),
+            ts(t) or "",
+        ]
+
+    def aralik(d1, d2):
+        return f"{d1:%d/%m/%Y} 0:00 - {d2:%d/%m/%Y} 23:59"
+
+    # Sunucu bazı sorgularda HTTP 500 verebiliyor; çalışan ilk yöntem kullanılır.
+    def y_aralik(boyut):
+        def f():
+            out = []
+            for rows, *_ in api.sayfali("orders", {"query[orderdate]": aralik(bas, simdi)}, ust_sinir=50000, boyut=boyut, deneme=2):
+                out += rows
+            return out
+        return f
+
+    def y_gun_gun():
+        out = []
+        g = bas
+        while g <= simdi.date():
+            for rows, *_ in api.sayfali("orders", {"query[orderdate]": aralik(g, g)}, ust_sinir=20000, boyut=20, deneme=3):
+                out += rows
+            g += dt.timedelta(days=1)
+        return out
+
+    def y_ters_sira():
+        out = []
+        for rows, s, *_ in api.sayfali("orders", {"sort[field]": "orders.id", "sort[sort]": "desc"}, boyut=50, deneme=3, en_fazla_sayfa=60):
+            tarihler = [tarih(alan(r, "orders_orderdate", "orderdate", son_ek="orderdate")) for r in rows]
+            if s == 1 and tarihler and all(t and t < alt_sinir for t in tarihler):
+                raise ApiHatasi("orders: sıralama desteklenmiyor (ilk sayfa eski kayıtlar)")
+            out += rows
+            if tarihler and all(t and t < alt_sinir for t in tarihler):
+                break
+        return out
+
+    yontemler = [("tarih aralığı (100'lük sayfa)", y_aralik(100)),
+                 ("tarih aralığı (20'lik sayfa)", y_aralik(20)),
+                 ("gün gün", y_gun_gun),
+                 ("yeniden eskiye sıralı", y_ters_sira)]
+    ham, hatalar = None, []
+    for ad, f in yontemler:
+        try:
+            ham = f()
+            log(f"  Yöntem: {ad} → {len(ham)} kayıt")
+            break
+        except ApiHatasi as e:
+            hatalar.append(f"{ad}: {e}")
+            log(f"  '{ad}' çalışmadı: {e}")
+    if ham is None:
+        raise ApiHatasi("orders: hiçbir yöntem çalışmadı — " + " | ".join(hatalar))
+
     liste, gorulen = [], set()
-    for rows, s, ss, top in api.sayfali("orders", {"query[orderdate]": aralik}, ust_sinir=50000):
-        for r in rows:
-            kod = alan(r, "orders_ordercode", "ordercode")
-            if not kod:
-                continue
-            kod = str(kod).strip()
-            if kod in gorulen:
-                continue
-            gorulen.add(kod)
-            t = tarih(alan(r, "orders_orderdate", "orderdate", son_ek="orderdate"))
-            liste.append([
-                kod,
-                str(alan(r, "orders_market_place_order_id", "market_place_order_id") or ""),
-                str(alan(r, "orders_type", "orders_flttype", "type") or ""),
-                str(alan(r, "orders_market_place_type", "market_place_type") or ""),
-                str(alan(r, "orders_status", "status") or ""),
-                str(alan(r, "orders_substatus", "substatus") or ""),
-                ts(t) or "",
-            ])
+    for r in ham:
+        x = satir(r)
+        if not x or x[0] in gorulen:
+            continue
+        gorulen.add(x[0])
+        liste.append(x)
     # Tarih filtresi çalışmadıysa (aralık dışı kayıt geldiyse) uyar ama listeyi aralıkla sınırla
     alt = f"{bas:%Y-%m-%d}"
     disarida = sum(1 for x in liste if x[6] and x[6] < alt)
