@@ -137,6 +137,61 @@
   .spin{display:inline-block;width:11px;height:11px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-1px;margin-right:6px}
   @keyframes sp{to{transform:rotate(360deg)}}
   #yuk{position:fixed;top:14px;left:50%;transform:translateX(-50%);display:none;z-index:120;padding:8px 16px;font-size:13px}
+
+  /* --- görünüm seçici (Hareketsiz Stok / Sipariş Kontrol) */
+  #gorunum{display:none;margin-bottom:18px;width:max-content;max-width:100%}
+  #gorunum .tab{font-size:15px;padding:11px 20px}
+  #gorunum .tab .c.kirmizi{background:var(--red);color:#fff}
+  .stoktabs{margin-bottom:16px;width:max-content;max-width:100%}
+
+  /* --- sipariş kontrol */
+  .sbar{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;padding:14px 16px;margin-bottom:14px}
+  .sbar .bilgi{flex:1 1 320px;color:var(--tx2);font-size:13px;line-height:1.6}
+  .sbar .bilgi b{color:var(--tx)}
+  .sbar .bilgi .uyari{color:var(--org)}
+  .sbar label.chk{white-space:nowrap}
+  .sbar .bekle{width:62px;padding:6px 8px;text-align:center}
+  #drop{border:2px dashed var(--line2);border-radius:16px;padding:34px 20px;text-align:center;cursor:pointer;transition:.15s;margin-bottom:14px;color:var(--tx2)}
+  #drop:hover,#drop.ust{border-color:var(--ac);background:var(--ac2);color:var(--tx)}
+  #drop .b{font-size:17px;font-weight:650;color:var(--tx);margin-bottom:6px}
+  #drop .k{font-size:12px;color:var(--tx3);margin-top:8px;line-height:1.6}
+  #drop.kucuk{padding:12px 16px;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;text-align:left}
+  #drop.kucuk .b{font-size:14px;margin:0}
+  #drop.kucuk .k{margin:0}
+  .serr{padding:14px 16px;margin-bottom:14px;color:var(--red);border-color:rgba(235,87,87,.35)}
+  .sbanner{padding:12px 16px;margin-bottom:14px;font-size:13px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .sbanner.org{border-color:rgba(242,153,74,.4);color:var(--org)}
+  .sbanner.ok{border-color:rgba(47,208,140,.4);color:var(--ac)}
+  .kanallar{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:16px}
+  .kanal .ad .alt{white-space:nowrap}
+  .kanal{padding:14px 16px;cursor:pointer;transition:.15s;border-width:1px}
+  .kanal:hover{border-color:var(--line2)}
+  .kanal.on{box-shadow:inset 0 0 0 1px rgba(86,204,242,.5)}
+  .kanal .ad{font-weight:650;display:flex;justify-content:space-between;gap:8px;align-items:center}
+  .kanal .say{font-size:28px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
+  .kanal .alt{font-size:12px;color:var(--tx3)}
+  .kanal.kotu{border-color:rgba(235,87,87,.45);background:rgba(235,87,87,.07)}
+  .kanal.kotu .say{color:var(--red)}
+  .kanal.iyi .say{color:var(--ac)}
+  .kfilt{display:flex;gap:6px;flex-wrap:wrap}
+  .kfilt button{border:1px solid var(--line);background:transparent;color:var(--tx2);border-radius:9px;padding:7px 12px;font:inherit;font-size:13px;cursor:pointer;display:flex;gap:7px;align-items:center}
+  .kfilt button.on{border-color:rgba(47,208,140,.45);color:var(--ac);background:var(--ac2)}
+  .kfilt button .c{font-size:11px;background:rgba(255,255,255,.08);color:var(--tx);padding:1px 7px;border-radius:20px}
+  .sb{display:inline-block;padding:3px 10px;border-radius:20px;font-weight:650;font-size:12px;white-space:nowrap}
+  .sb.yok{background:rgba(235,87,87,.16);color:var(--red)}
+  .sb.ok{background:rgba(47,208,140,.14);color:var(--ac)}
+  .sb.bek{background:rgba(86,204,242,.13);color:var(--blu)}
+  .sb.fba{background:rgba(242,201,76,.14);color:var(--yel)}
+  .sb.dis{background:rgba(255,255,255,.07);color:var(--tx2)}
+  .kod{font-family:Consolas,ui-monospace,monospace;font-size:13px}
+  .kopya{border:0;background:transparent;color:var(--tx3);cursor:pointer;padding:0 4px;font-size:13px}
+  .kopya:hover{color:var(--ac)}
+  @media (max-width:700px){
+    #gorunum{width:100%} #gorunum .tab{flex:1;font-size:14px;padding:10px 6px}
+    .stoktabs{width:100%}
+    .kanallar{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .kanal .say{font-size:22px}
+  }
 </style>
 </head>
 <body>
@@ -150,18 +205,42 @@
 </form></div>
 <div id="yuk" class="glass">Rapor yükleniyor…</div>
 <div class="wrap" id="app">
+  <div class="glass tabs" id="gorunum">
+    <button class="tab on" data-g="stok">📦 Hareketsiz Stok</button>
+    <button class="tab" data-g="sip">🧾 Sipariş Kontrol <span class="c" id="sipsay" style="display:none"></span></button>
+  </div>
   <header>
-    <h1>Hareketsiz Raf Stoğu<small id="sub"></small></h1>
+    <h1><span id="btext">Hareketsiz Raf Stoğu</span><small id="sub"></small></h1>
     <div class="hright">
       <div id="webbar">
         <span id="durum"></span>
-        <button class="btn sm pri" id="guncelle">↻ Güncelle</button>
+        <button class="btn sm pri" id="guncelle" title="Stok raporunu ve depo siparişlerini günceller (birkaç dakika)">↻ Güncelle</button>
         <button class="btn sm" id="cikis">Çıkış</button>
       </div>
-      <div class="glass tabs" id="tabs"></div>
     </div>
   </header>
 
+  <!-- ===================== SİPARİŞ KONTROL ===================== -->
+  <div id="vSip" style="display:none">
+    <div class="glass sbar">
+      <div class="bilgi" id="sipbilgi">Depo siparişleri yükleniyor…</div>
+      <label class="chk" title="Sipariş entegrapi'ye düştükten sonra depoya akması için tanınan süre">Akış payı
+        <input class="inp bekle" id="bekle" type="number" min="5" max="240" step="5" value="30"> dk</label>
+      <button class="btn sm pri" id="sipguncelle" title="Sadece depo siparişlerini çeker (stok raporuna dokunmaz)">⚡ Depo siparişlerini güncelle</button>
+    </div>
+    <div id="drop" class="glass">
+      <div class="b">entegrapi sipariş Excel'ini buraya sürükleyin</div>
+      <div>ya da tıklayıp dosyayı seçin (.xlsx)</div>
+      <div class="k">entegrapi → Sipariş Yönetimi → Siparişler → tarih filtresi (ör. son 2 gün) → İşlemler → Excel'e aktar.<br>
+        Dosya hiçbir yere yüklenmez; karşılaştırma bu tarayıcıda yapılır.</div>
+    </div>
+    <input type="file" id="dosya" accept=".xlsx,.csv" hidden>
+    <div id="sipsonuc"></div>
+  </div>
+
+  <!-- ===================== HAREKETSİZ STOK ===================== -->
+  <div id="vStok">
+  <div class="glass tabs stoktabs" id="tabs"></div>
   <section class="kpis" id="kpis"></section>
 
   <div class="grid">
@@ -205,6 +284,7 @@
   </div>
 
   <footer class="glass" id="foot"></footer>
+  </div>
 </div>
 
 <script>
@@ -216,6 +296,7 @@ const fmtDate = s => s ? s.slice(8,10)+'.'+s.slice(5,7)+'.'+s.slice(0,4) : '';
 const tabName = p => p === 7 ? '1 Hafta+' : p === 14 ? '2 Hafta+' : p === 30 ? '30 Gün+' : p === 60 ? '2 Ay+' : p === 90 ? '3 Ay+' : p === 180 ? '6 Ay+' : p === 365 ? '1 Yıl+' : p + ' Gün+';
 
 let S, current;
+let STOK_ALT = '', GORUNUM = 'stok';
 function baslat(D) {
 S = {win: D.pencereler[0], q: '', raf: '', brands: new Set(), never: false, adj: false,
            sort: 'g', dir: -1, page: 0, per: 50, bmode: 'cnt'};
@@ -244,7 +325,7 @@ function apply(rows, skipBrand) {
 function renderTabs() {
   document.getElementById('tabs').innerHTML = D.pencereler.map(p =>
     `<button class="tab ${p === S.win ? 'on' : ''}" data-p="${p}">${tabName(p)} <span class="c">${nf.format(base(p).length)}</span></button>`).join('');
-  document.querySelectorAll('.tab').forEach(b => b.onclick = () => { S.win = +b.dataset.p; S.page = 0; render(); });
+  document.querySelectorAll('#tabs .tab').forEach(b => b.onclick = () => { S.win = +b.dataset.p; S.page = 0; render(); });
 }
 
 function renderKpis(rows) {
@@ -368,7 +449,8 @@ function exportCsv() {
 }
 
 // --- olaylar
-document.getElementById('sub').textContent = `${D.firma} · ${D.olusturma} itibarıyla · raflarda stoğu olan ${nf.format(D.toplam_rafta)} ürün tarandı`;
+STOK_ALT = `${D.firma} · ${D.olusturma} itibarıyla · raflarda stoğu olan ${nf.format(D.toplam_rafta)} ürün tarandı`;
+if (GORUNUM === 'stok') document.getElementById('sub').textContent = STOK_ALT;
 let t;
 document.getElementById('q').oninput = e => { clearTimeout(t); t = setTimeout(() => { S.q = e.target.value; S.page = 0; render(); }, 150); };
 document.getElementById('raf').oninput = e => { S.raf = e.target.value; S.page = 0; render(); };
@@ -397,6 +479,339 @@ document.getElementById('foot').innerHTML = `
   <br><b>Bilinen sınır:</b> Bir ürünün başka rafa taşınması da raftan çıkış olarak görünür ve “hareket” sayılır.
   <br>Oluşturma: ${D.olusturma} · ${nf.format(D.istek)} API isteği · ${nf.format(D.sure)} sn · sürüm ${D.surum}`;
 render();
+}
+
+// ===================== SİPARİŞ KONTROL =====================
+// entegrapi'den alınan Excel ile depodaki sipariş listesi karşılaştırılır.
+// Excel bu tarayıcıda okunur; hiçbir yere gönderilmez.
+
+const KANAL = {'-2': 'Sıcak Satış', '-1': 'Manuel', '0': 'Site', '-3': 'Mobil Uygulama', '1': 'Nebim', '2': 'n11',
+  '6': 'PttAVM', '8': 'Hepsiburada', '9': 'Trendyol', '12': 'Çiçeksepeti', '14': 'DİA Yazılım', '16': 'Amazon',
+  '18': 'Pobol', '19': 'Shopify', '25': 'Hızlı Market', '41': 'Vega Yazılım', '42': 'İdefix', '43': 'Pazarama',
+  '46': 'Yemeksepeti Market', '47': 'Akakçe', '49': 'Opencart', '52': 'Ankara Yazılım', '54': 'Temu', '55': 'Beymen',
+  '56': 'İdeasoft', '57': 'İkas', '58': 'MediaMarkt', '59': 'WooCommerce', '62': 'Koçtaş'};
+const DEPO_DURUM = {'0': 'İşlem Bekliyor', '1': 'Toplama Bekliyor', '2': 'Raf Yerleştirme Bekliyor', '3': 'Tedarik Bekliyor',
+  '4': 'Toplanıyor', '5': 'Askıya Alındı', '6': 'Kargo Çıktısı Bekliyor', '7': 'Kargolama Bekliyor', '8': 'Kargolanıyor',
+  '9': 'Teslimat Bekliyor', '10': 'Teslimat Tamamlandı', '11': 'Kurye Teslim Aldı', '12': 'Kurye Dağıtımında',
+  '13': 'Kurye Lokasyonda', '14': 'Kurye Teslim Etti', '15': 'Kurye Teslim Edemedi', '20': 'İptal Edildi'};
+const KAT = {
+  yok:   {ad: 'Depoya düşmedi', cls: 'yok', ac: 'Akış süresi geçtiği hâlde depoda yok — kontrol edilmeli'},
+  ok:    {ad: 'Depoda', cls: 'ok', ac: 'Depoya düşmüş'},
+  yolda: {ad: 'Yolda', cls: 'bek', ac: 'Akış payı henüz dolmadı'},
+  yeni:  {ad: 'Depo verisi eski', cls: 'bek', ac: 'Sipariş, depo verisinin çekildiği andan sonra gelmiş — depo siparişlerini güncelleyin'},
+  fba:   {ad: 'Amazon deposundan?', cls: 'fba', ac: 'Amazon, kargoya verildi, depo durumu “İşlem Bekliyor”: büyük ihtimalle Amazon kendi deposundan gönderdi'},
+  odeme: {ad: 'Ödeme bekliyor', cls: 'dis', ac: 'Havale/EFT onayı beklenen siparişler depoya hemen aktarılmaz'},
+  iptal: {ad: 'İptal/İade', cls: 'dis', ac: 'İptal veya iade edilmiş; depoya düşmemesi normal'},
+  eski:  {ad: 'Aralık dışı', cls: 'dis', ac: 'Depo verisinin kapsadığı günlerden eski'},
+};
+const GRUP = [  // ekrandaki filtre düğmeleri
+  {k: 'sorun', ad: '❌ Depoya düşmeyen', kat: ['yok']},
+  {k: 'bek', ad: '⏳ Bekleyen', kat: ['yolda', 'yeni']},
+  {k: 'dis', ad: 'ℹ️ Kontrol dışı', kat: ['fba', 'odeme', 'iptal', 'eski']},
+  {k: 'ok', ad: '✓ Depoda', kat: ['ok']},
+  {k: 'hepsi', ad: 'Tümü', kat: null},
+];
+let SIP = null;          // depo sipariş verisi (siparis.enc)
+let EXCEL = null;        // okunan Excel {ad, olusturma, satirlar}
+let SS = {grup: 'sorun', kanal: null};  // ekran durumu
+
+// --- yardımcılar
+const yerelTarih = s => {  // "2026-11-12 14:57:00" veya "12.11.2026 14:05" -> Date (yerel saat)
+  if (!s) return null;
+  let m = String(s).match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (m) return new Date(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
+  m = String(s).match(/(\d{1,2})[./](\d{1,2})[./](\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (m) return new Date(+m[3], m[2] - 1, +m[1], +m[4], +m[5], +(m[6] || 0));
+  m = String(s).match(/(\d{1,2})[./](\d{1,2})[./](\d{4})/);
+  if (m) return new Date(+m[3], m[2] - 1, +m[1]);
+  return null;
+};
+const tGoster = d => d ? d.toLocaleString('tr-TR', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'}) : '—';
+const sureYaz = dk => dk < 60 ? `${dk} dk` : dk < 1440 ? `${Math.floor(dk / 60)} sa ${dk % 60} dk` : `${Math.floor(dk / 1440)} gün ${Math.floor(dk % 1440 / 60)} sa`;
+const kodNorm = v => String(v ?? '').trim().toUpperCase().replace(/\s+/g, '');
+const xmlCoz = s => s.replace(/&(#x?[0-9a-f]+|amp|lt|gt|quot|apos);/gi, (m, e) =>
+  e[0] === '#' ? String.fromCodePoint(e[1].toLowerCase() === 'x' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10))
+    : ({amp: '&', lt: '<', gt: '>', quot: '"', apos: "'"})[e.toLowerCase()]);
+
+// --- .xlsx okuyucu (dış kütüphane yok): zip'i aç, ilk sayfayı satır satır oku
+async function zipAc(buf) {
+  const dv = new DataView(buf), u8 = new Uint8Array(buf);
+  let e = -1;
+  for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 70000); i--) if (dv.getUint32(i, true) === 0x06054b50) { e = i; break; }
+  if (e < 0) throw new Error('Dosya .xlsx biçiminde değil. entegrapi’den “Excel’e aktar” ile alınan dosyayı kullanın.');
+  const adet = dv.getUint16(e + 10, true);
+  let p = dv.getUint32(e + 16, true);
+  const dosyalar = {};
+  for (let i = 0; i < adet; i++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const yontem = dv.getUint16(p + 10, true), boy = dv.getUint32(p + 20, true);
+    const nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true);
+    const yer = dv.getUint32(p + 42, true);
+    const ad = new TextDecoder().decode(u8.subarray(p + 46, p + 46 + nl));
+    dosyalar[ad] = {yontem, boy, yer};
+    p += 46 + nl + xl + cl;
+  }
+  return async ad => {
+    const f = dosyalar[ad]; if (!f) return null;
+    const bas = f.yer + 30 + dv.getUint16(f.yer + 26, true) + dv.getUint16(f.yer + 28, true);
+    const veri = u8.subarray(bas, bas + f.boy);
+    if (f.yontem === 0) return new TextDecoder().decode(veri);
+    if (f.yontem !== 8) throw new Error('Desteklenmeyen sıkıştırma');
+    const akis = new Blob([veri]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return await new Response(akis).text();
+  };
+  // not: dosya adlarını dışarı vermek için
+}
+async function xlsxOku(buf) {
+  const oku = await zipAc(buf);
+  const ortak = [];
+  const ss = await oku('xl/sharedStrings.xml');
+  if (ss) for (const m of ss.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)) {
+    const ic = m[1].replace(/<rPh\b[\s\S]*?<\/rPh>/g, '');
+    ortak.push(xmlCoz([...ic.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(x => x[1]).join('')));
+  }
+  let sayfa = await oku('xl/worksheets/sheet1.xml');
+  if (!sayfa) {  // ilk sayfanın adı farklıysa workbook ilişkilerinden bul
+    const rel = await oku('xl/_rels/workbook.xml.rels') || '';
+    const m = rel.match(/Target="\/?(?:xl\/)?(worksheets\/[^"]+)"/);
+    if (m) sayfa = await oku('xl/' + m[1]);
+  }
+  if (!sayfa) throw new Error('Excel içinde sayfa bulunamadı.');
+  const harf = s => { let n = 0; for (const c of s) n = n * 26 + c.charCodeAt(0) - 64; return n - 1; };
+  const satirlar = [];
+  for (const rm of sayfa.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)) {
+    const satir = [];
+    for (const cm of rm[1].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+      const at = cm[1], ic = cm[2] || '';
+      const r = (at.match(/\br="([A-Z]+)\d+"/) || [])[1];
+      const t = (at.match(/\bt="([^"]+)"/) || [])[1] || 'n';
+      let v = (ic.match(/<v>([\s\S]*?)<\/v>/) || [])[1];
+      if (t === 's') v = ortak[+v];
+      else if (t === 'inlineStr') v = [...ic.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(x => xmlCoz(x[1])).join('');
+      else if (v != null) { v = xmlCoz(v); if (t === 'n' && /e/i.test(v) && isFinite(+v)) v = BigInt(Math.round(+v)).toString(); }
+      satir[r ? harf(r) : satir.length] = v ?? '';
+    }
+    satirlar.push(Array.from(satir, x => x ?? ''));
+  }
+  return satirlar;
+}
+function csvOku(metin) {
+  const ilk = metin.split(/\r?\n/)[0] || '';
+  const ayr = (ilk.match(/;/g) || []).length >= (ilk.match(/,/g) || []).length ? ';' : ',';
+  const out = []; let satir = [], alan = '', tirnak = false;
+  for (let i = 0; i < metin.length; i++) {
+    const c = metin[i];
+    if (tirnak) { if (c === '"') { if (metin[i + 1] === '"') { alan += '"'; i++; } else tirnak = false; } else alan += c; }
+    else if (c === '"') tirnak = true;
+    else if (c === ayr) { satir.push(alan); alan = ''; }
+    else if (c === '\n') { satir.push(alan.replace(/\r$/, '')); out.push(satir); satir = []; alan = ''; }
+    else alan += c;
+  }
+  if (alan || satir.length) { satir.push(alan); out.push(satir); }
+  return out;
+}
+
+// entegrapi sipariş listesinden gerekli sütunları çıkar (müşteri adı vb. okunmaz)
+function excelCoz(satirlar, dosyaAdi) {
+  const n = s => trLower(String(s ?? '').trim()).replace(/\s+/g, ' ');
+  let bi = -1;
+  for (let i = 0; i < Math.min(15, satirlar.length); i++) if (satirlar[i].some(c => n(c) === 'kod')) { bi = i; break; }
+  if (bi < 0) throw new Error('Dosyada “Kod” sütunu bulunamadı. entegrapi → Siparişler ekranından alınan Excel\'i kullanın.');
+  const bas = satirlar[bi].map(n);
+  const sut = (...adlar) => { for (const a of adlar) { const i = bas.indexOf(a); if (i >= 0) return i; } return -1; };
+  const iKod = sut('kod'), iKanal = sut('s.k.', 'sipariş kanalı', 'kanal'), iDurum = sut('durumu', 'durum'),
+        iDepo = sut('depo durumu'), iTutar = sut('tutarı', 'tutar'), iTarih = sut('tarihi', 'tarih', 'sipariş tarihi');
+  if (iTarih < 0) throw new Error('Dosyada “Tarihi” sütunu bulunamadı.');
+  let olusturma = null;  // başlık satırı: "Siparişler 12/11/2026 14:57"
+  for (let i = 0; i < bi; i++) for (const c of satirlar[i]) { const d = yerelTarih(c); if (d && /\d{1,2}:\d{2}/.test(c)) olusturma = d; }
+  if (!olusturma) { const m = String(dosyaAdi || '').match(/(\d{2})(\d{2})(\d{4})-(\d{2})(\d{2})/); if (m) olusturma = new Date(+m[3], m[2] - 1, +m[1], +m[4], +m[5]); }
+  const out = [];
+  for (let i = bi + 1; i < satirlar.length; i++) {
+    const r = satirlar[i], kod = String(r[iKod] ?? '').trim();
+    if (!kod) continue;
+    const tarihHam = String(r[iTarih] ?? '');
+    out.push({
+      kod, kanal: iKanal >= 0 ? String(r[iKanal] || '').trim() || '—' : '—',
+      durum: iDurum >= 0 ? String(r[iDurum] || '').trim() : '',
+      depoDurum: iDepo >= 0 ? String(r[iDepo] || '').trim() : '',
+      tutar: iTutar >= 0 ? parseFloat(String(r[iTutar]).replace(',', '.')) || 0 : 0,
+      tarih: yerelTarih(tarihHam),
+    });
+  }
+  if (!out.length) throw new Error('Dosyada sipariş satırı bulunamadı.');
+  return {ad: dosyaAdi, olusturma, satirlar: out};
+}
+
+// --- karşılaştırma
+function karsilastir() {
+  if (!EXCEL || !SIP) return null;
+  const bekle = Math.max(1, +$('bekle').value || 30) * 60000;
+  const cekim = yerelTarih(SIP.cekim), aralikBas = yerelTarih(SIP.bas);
+  const depo = new Map();
+  for (const x of SIP.liste) { depo.set(kodNorm(x[0]), x); if (x[1]) depo.set(kodNorm(x[1]), x); }
+  return EXCEL.satirlar.map(s => {
+    const d = depo.get(kodNorm(s.kod));
+    const dl = trLower(s.durum), ddl = trLower(s.depoDurum);
+    let kat;
+    if (d) kat = 'ok';
+    else if (/iptal|iade edildi/.test(dl)) kat = 'iptal';
+    else if (/ödeme bekliyor/.test(dl)) kat = 'odeme';
+    else if (!s.tarih) kat = 'yok';
+    else if (aralikBas && s.tarih < aralikBas) kat = 'eski';
+    else if (cekim && s.tarih >= cekim) kat = 'yeni';
+    else if (cekim && cekim - s.tarih < bekle) kat = 'yolda';
+    else if (/amazon/i.test(s.kanal) && /kargoya verildi|tamamlandı|teslim/.test(dl) && /işlem bekliyor/.test(ddl)) kat = 'fba';
+    else kat = 'yok';
+    const gecen = s.tarih ? Math.max(0, Math.round(((cekim || new Date()) - s.tarih) / 60000)) : null;
+    return Object.assign({}, s, {kat, depo: d || null, gecen});
+  });
+}
+
+function sipBilgiYaz() {
+  const el = $('sipbilgi');
+  if (!SIP) { el.innerHTML = 'Depo siparişleri henüz çekilmemiş. <b>⚡ Depo siparişlerini güncelle</b> düğmesine basın.'; return; }
+  const cekim = yerelTarih(SIP.cekim), yas = Math.round((Date.now() - cekim) / 60000);
+  let h = `Depo siparişleri: <b>${tGoster(cekim)}</b> itibarıyla · ${nf.format(SIP.liste.length)} sipariş (${fmtDate(SIP.bas)} – bugün)`;
+  if (yas > 60) h += ` · <span class="uyari">${sureYaz(yas)} önce çekildi</span>`;
+  if (EXCEL) h += `<br>Excel: <b>${esc(EXCEL.ad || 'dosya')}</b> · ${nf.format(EXCEL.satirlar.length)} sipariş${EXCEL.olusturma ? ' · ' + tGoster(EXCEL.olusturma) + ' tarihli' : ''}`;
+  el.innerHTML = h;
+}
+
+function renderSip() {
+  sipBilgiYaz();
+  const kutu = $('sipsonuc'), drop = $('drop');
+  drop.classList.toggle('kucuk', !!EXCEL);
+  if (EXCEL) drop.innerHTML = `<div class="b">📄 ${esc(EXCEL.ad || 'Excel')}</div><div class="k">Yeni dosya için buraya sürükleyin ya da tıklayın</div>`;
+  const R = karsilastir();
+  if (!R) { kutu.innerHTML = ''; sipSayac(null); return; }
+
+  const say = k => R.filter(r => r.kat === k).length;
+  const yok = say('yok'), bek = say('yolda') + say('yeni');
+  sipSayac(yok);
+  let h = '';
+  // depo verisi Excel'den eskiyse uyar
+  const cekim = yerelTarih(SIP.cekim);
+  if (say('yeni') > 0) h += `<div class="glass sbanner org">⚠️ ${say('yeni')} sipariş, depo verisinin çekildiği saatten (${tGoster(cekim)}) sonra gelmiş. Kesin sonuç için <button class="btn sm pri" onclick="$('sipguncelle').click()">⚡ Depo siparişlerini güncelle</button></div>`;
+  else if (!yok) h += `<div class="glass sbanner ok">✓ Akış payı geçmiş tüm siparişler depoya düşmüş.</div>`;
+
+  // özet kartları
+  const kk = [
+    ['Excel\'deki sipariş', nf.format(R.length), `${EXCEL.olusturma ? tGoster(EXCEL.olusturma) : ''}`],
+    ['Depoda bulunan', nf.format(say('ok')), R.length ? '%' + Math.round(say('ok') / R.length * 100) : ''],
+    ['❌ Depoya düşmeyen', nf.format(yok), `akış payı (${$('bekle').value} dk) geçmiş`],
+    ['⏳ Bekleyen', nf.format(bek), 'henüz karar verilemez'],
+  ];
+  h += `<section class="kpis">${kk.map(([l, v, s], i) => `<div class="glass kpi"><div class="l">${l}</div><div class="v" style="${i === 2 && yok ? 'color:var(--red)' : ''}">${v}</div><div class="s">${s}</div></div>`).join('')}</section>`;
+
+  // pazaryeri kartları
+  const kan = new Map();
+  R.forEach(r => { const o = kan.get(r.kanal) || {top: 0, yok: 0, ok: 0}; o.top++; if (r.kat === 'yok') o.yok++; if (r.kat === 'ok') o.ok++; kan.set(r.kanal, o); });
+  const kanallar = [...kan.entries()].sort((a, b) => b[1].yok - a[1].yok || b[1].top - a[1].top);
+  h += `<div class="kanallar">${kanallar.map(([ad, o]) => `
+    <div class="glass kanal ${o.yok ? 'kotu' : 'iyi'} ${SS.kanal === ad ? 'on' : ''}" data-k="${esc(ad)}" title="Tıklayınca listeyi bu kanala göre süzer">
+      <div class="ad"><span>${esc(ad)}</span><span class="alt">${nf.format(o.top)} sipariş</span></div>
+      <div class="say">${o.yok ? '❌ ' + nf.format(o.yok) : '✓ 0'}</div>
+      <div class="alt">${o.yok ? 'depoya düşmeyen' : 'eksik yok'} · ${nf.format(o.ok)} depoda</div>
+    </div>`).join('')}</div>`;
+
+  // filtre + tablo
+  const grupSay = g => R.filter(r => (!SS.kanal || r.kanal === SS.kanal) && (!g.kat || g.kat.includes(r.kat))).length;
+  const g = GRUP.find(x => x.k === SS.grup) || GRUP[0];
+  const liste = R.filter(r => (!SS.kanal || r.kanal === SS.kanal) && (!g.kat || g.kat.includes(r.kat)))
+    .sort((a, b) => (a.kat === 'yok' ? 0 : 1) - (b.kat === 'yok' ? 0 : 1) || (b.tarih || 0) - (a.tarih || 0));
+  h += `<div class="glass filters">
+      <div class="kfilt">${GRUP.map(x => `<button class="${x.k === SS.grup ? 'on' : ''}" data-g="${x.k}">${x.ad} <span class="c">${nf.format(grupSay(x))}</span></button>`).join('')}</div>
+      ${SS.kanal ? `<button class="btn sm" id="kanaltemiz">${esc(SS.kanal)} ✕</button>` : ''}
+      <span class="spacer"></span>
+      <button class="btn sm" id="kodkopya" ${liste.length ? '' : 'disabled'}>Kodları kopyala</button>
+      <button class="btn sm pri" id="sipcsv" ${liste.length ? '' : 'disabled'}>Excel'e aktar</button>
+    </div>
+    <div class="glass tbl"><div class="tscroll"><table>
+      <thead><tr><th>Sonuç</th><th>Kanal</th><th>Sipariş kodu</th><th>Sipariş tarihi</th><th class="r">Geçen süre</th><th>entegrapi durumu</th><th>Depodaki durum</th><th class="r">Tutar</th></tr></thead>
+      <tbody>${liste.length ? liste.map(r => `<tr>
+        <td><span class="sb ${KAT[r.kat].cls}" title="${esc(KAT[r.kat].ac)}">${KAT[r.kat].ad}</span></td>
+        <td>${esc(r.kanal)}</td>
+        <td><span class="kod">${esc(r.kod)}</span><button class="kopya" data-kod="${esc(r.kod)}" title="Kopyala">⧉</button></td>
+        <td>${tGoster(r.tarih)}</td>
+        <td class="r">${r.gecen == null ? '—' : sureYaz(r.gecen)}</td>
+        <td>${esc(r.durum)}${r.depoDurum ? `<div class="pc">Depo: ${esc(r.depoDurum)}</div>` : ''}</td>
+        <td>${r.depo ? esc(DEPO_DURUM[r.depo[5]] || r.depo[5] || '—') : '<span class="muted">—</span>'}</td>
+        <td class="r">${r.tutar ? '₺' + nf2.format(r.tutar) : ''}</td></tr>`).join('')
+      : `<tr><td colspan="8"><div class="empty">${SS.grup === 'sorun' ? 'Depoya düşmeyen sipariş yok 🎉' : 'Bu filtrede sipariş yok'}</div></td></tr>`}</tbody>
+    </table></div></div>
+    <footer class="glass"><b>Nasıl karar veriliyor?</b> Excel'deki her sipariş kodu, depodaki siparişlerin kodu (ve pazaryeri sipariş no) ile eşleştirilir.
+      Bulunamayan sipariş; depo verisinin çekildiği saatten en az <b>${esc($('bekle').value)} dk</b> önce geldiyse <b>“Depoya düşmedi”</b> sayılır, daha yeniyse <b>“Yolda”</b>.
+      İptal/iade, havale onayı bekleyen ve Amazon'un kendi deposundan gönderdiği (kargoya verildi + depo durumu “İşlem Bekliyor”) siparişler hata sayılmaz.
+      Depo verisi son ${esc(SIP.gun)} günü kapsar; daha eski siparişler “Aralık dışı” görünür.</footer>`;
+  kutu.innerHTML = h;
+
+  kutu.querySelectorAll('.kanal').forEach(k => k.onclick = () => { SS.kanal = SS.kanal === k.dataset.k ? null : k.dataset.k; renderSip(); });
+  kutu.querySelectorAll('.kfilt button').forEach(b => b.onclick = () => { SS.grup = b.dataset.g; renderSip(); });
+  if ($('kanaltemiz')) $('kanaltemiz').onclick = () => { SS.kanal = null; renderSip(); };
+  kutu.querySelectorAll('.kopya').forEach(b => b.onclick = () => kopyala(b.dataset.kod, b));
+  $('kodkopya').onclick = e => kopyala(liste.map(r => r.kod).join('\n'), e.target);
+  $('sipcsv').onclick = () => sipCsv(liste);
+}
+function kopyala(metin, el) {
+  const bitti = () => { const eski = el.textContent; el.textContent = '✓'; setTimeout(() => el.textContent = eski, 1200); };
+  if (navigator.clipboard) navigator.clipboard.writeText(metin).then(bitti, () => prompt('Kopyalayın:', metin));
+  else prompt('Kopyalayın:', metin);
+}
+function sipCsv(liste) {
+  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const satir = liste.map(r => [q(KAT[r.kat].ad), q(r.kanal), q(r.kod), q(tGoster(r.tarih)), q(r.gecen == null ? '' : sureYaz(r.gecen)),
+    q(r.durum), q(r.depoDurum), q(r.depo ? (DEPO_DURUM[r.depo[5]] || r.depo[5]) : ''), String(r.tutar || '').replace('.', ',')].join(';'));
+  const bas = ['Sonuç', 'Kanal', 'Sipariş Kodu', 'Sipariş Tarihi', 'Geçen Süre', 'entegrapi Durumu', 'entegrapi Depo Durumu', 'Depodaki Durum', 'Tutar'];
+  const blob = new Blob(['﻿' + bas.join(';') + '\r\n' + satir.join('\r\n')], {type: 'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `siparis_kontrol_${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}.csv`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function sipSayac(n) {
+  const c = $('sipsay');
+  if (n == null) { c.style.display = 'none'; return; }
+  c.style.display = ''; c.textContent = n; c.classList.toggle('kirmizi', n > 0);
+}
+async function dosyaYukle(f) {
+  if (!f) return;
+  const eski = $('sipsonuc').querySelector('.serr'); if (eski) eski.remove();
+  try {
+    let satirlar;
+    if (/\.csv$/i.test(f.name)) satirlar = csvOku(await f.text());
+    else if (/\.xls$/i.test(f.name)) throw new Error('Eski .xls biçimi desteklenmiyor. Dosyayı Excel\'de açıp “.xlsx” olarak kaydedin.');
+    else satirlar = await xlsxOku(await f.arrayBuffer());
+    EXCEL = excelCoz(satirlar, f.name);
+    SS.grup = 'sorun'; SS.kanal = null;
+    renderSip();
+  } catch (e) {
+    $('sipsonuc').insertAdjacentHTML('afterbegin', `<div class="glass serr">✕ ${esc(e.message)}</div>`);
+  }
+}
+function gorunumSec(g) {
+  GORUNUM = g;
+  document.querySelectorAll('#gorunum .tab').forEach(b => b.classList.toggle('on', b.dataset.g === g));
+  $('vStok').style.display = g === 'stok' ? '' : 'none';
+  $('vSip').style.display = g === 'sip' ? '' : 'none';
+  $('btext').textContent = g === 'stok' ? 'Hareketsiz Raf Stoğu' : 'Sipariş Kontrol';
+  $('sub').textContent = g === 'stok' ? STOK_ALT : 'entegrapi’deki siparişler depoya düşmüş mü?';
+  try { sessionStorage.setItem('hs_gorunum', g); } catch (e) {}
+  if (g === 'sip') renderSip();
+}
+function sipKur() {
+  $('gorunum').style.display = 'flex';
+  document.querySelectorAll('#gorunum .tab').forEach(b => b.onclick = () => gorunumSec(b.dataset.g));
+  const drop = $('drop'), inp = $('dosya');
+  drop.onclick = () => inp.click();
+  inp.onchange = () => { dosyaYukle(inp.files[0]); inp.value = ''; };
+  ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('ust'); }));
+  ['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('ust'); }));
+  drop.addEventListener('drop', e => dosyaYukle(e.dataTransfer.files[0]));
+  // sayfanın herhangi bir yerine bırakılan dosya da kabul edilsin (sipariş görünümündeyken)
+  window.addEventListener('dragover', e => { if (GORUNUM === 'sip') e.preventDefault(); });
+  window.addEventListener('drop', e => { if (GORUNUM === 'sip' && !drop.contains(e.target)) { e.preventDefault(); dosyaYukle(e.dataTransfer.files[0]); } });
+  $('bekle').onchange = () => renderSip();
+  let g = 'stok'; try { g = sessionStorage.getItem('hs_gorunum') || 'stok'; } catch (e) {}
+  gorunumSec(g);
 }
 
 // ===================== WEB (GitHub) =====================
@@ -461,6 +876,13 @@ async function raporYukle(G) {
     baslat(D);
   } finally { $('yuk').style.display = 'none'; }
 }
+async function siparisYukle(G) {
+  try {
+    const r = await gh(G, `contents/siparis.enc?ref=${G.dal}`, {headers: {Accept: 'application/vnd.github.raw+json'}});
+    SIP = r.ok ? await coz(await r.text()) : null;
+  } catch (e) { if (e.message === 'SIFRE') throw e; SIP = null; }
+  if (GORUNUM === 'sip') renderSip(); else sipBilgiYaz();
+}
 const dk = iso => Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
 function durumYaz(tur, html) { const d = $('durum'); d.className = tur || ''; d.innerHTML = html; }
 async function sonCalisma(G) {
@@ -472,29 +894,37 @@ async function sonCalisma(G) {
 async function durumKontrol(G, yeniBekleniyor) {
   let c;
   try { c = await sonCalisma(G); } catch (e) { c = null; }
-  const temel = `Son güncelleme: <b>${esc(SON_RAPOR_ZAMANI || '—')}</b>`;
+  const temel = `Stok raporu: <b>${esc(SON_RAPOR_ZAMANI || '—')}</b>`;
+  const dugmeler = acik => ['guncelle', 'sipguncelle'].forEach(id => $(id).disabled = !acik);
   if (c && c.status !== 'completed') {
-    $('guncelle').disabled = true;
-    durumYaz('calisiyor', `<span class="spin"></span>Güncelleniyor… ${dk(c.run_started_at || c.created_at)} dk · ${temel}`);
-    clearTimeout(IZLE); IZLE = setTimeout(() => durumKontrol(G, true), 15000);
+    dugmeler(false);
+    const ne = /sipari/i.test(c.display_title || c.name || '') ? 'Depo siparişleri çekiliyor' : 'Güncelleniyor';
+    durumYaz('calisiyor', `<span class="spin"></span>${ne}… ${dk(c.run_started_at || c.created_at)} dk · ${temel}`);
+    clearTimeout(IZLE); IZLE = setTimeout(() => durumKontrol(G, true), 10000);
     return;
   }
-  $('guncelle').disabled = false;
+  dugmeler(true);
   if (c && yeniBekleniyor) {
-    if (c.conclusion === 'success') { await raporYukle(G); durumYaz('ok', '✓ Rapor güncellendi · ' + `Son güncelleme: <b>${esc(SON_RAPOR_ZAMANI)}</b>`); return; }
+    if (c.conclusion === 'success') {
+      const sadeceSip = /sipari/i.test(c.display_title || '');
+      if (!sadeceSip) await raporYukle(G);
+      await siparisYukle(G);
+      durumYaz('ok', (sadeceSip ? '✓ Depo siparişleri güncellendi · ' : '✓ Rapor güncellendi · ') + `Stok raporu: <b>${esc(SON_RAPOR_ZAMANI)}</b>`); return;
+    }
     durumYaz('hata', `✕ Güncelleme başarısız oldu (<a href="${esc(c.html_url)}" target="_blank" rel="noopener">ayrıntı</a>) · ${temel}`); return;
   }
   durumYaz('', temel);
 }
-async function guncelleBaslat(G) {
-  $('guncelle').disabled = true;
-  durumYaz('calisiyor', '<span class="spin"></span>Güncelleme başlatılıyor…');
+async function guncelleBaslat(G, mod = 'tam') {
+  ['guncelle', 'sipguncelle'].forEach(id => $(id).disabled = true);
+  durumYaz('calisiyor', '<span class="spin"></span>' + (mod === 'siparis' ? 'Depo siparişleri isteniyor…' : 'Güncelleme başlatılıyor…'));
   try {
     const r = await gh(G, `actions/workflows/${G.is}/dispatches`, {method: 'POST',
-      headers: {'Content-Type': 'application/json', Accept: 'application/vnd.github+json'}, body: JSON.stringify({ref: 'main'})});
+      headers: {'Content-Type': 'application/json', Accept: 'application/vnd.github+json'},
+      body: JSON.stringify({ref: 'main', inputs: {mod}})});
     if (r.status !== 204) throw new Error('Güncelleme başlatılamadı (' + r.status + ')');
     setTimeout(() => durumKontrol(G, true), 5000);
-  } catch (e) { $('guncelle').disabled = false; durumYaz('hata', esc(e.message)); }
+  } catch (e) { ['guncelle', 'sipguncelle'].forEach(id => $(id).disabled = false); durumYaz('hata', esc(e.message)); }
 }
 function girisGoster(G, mesaj) {
   $('app').style.display = 'none'; $('login').style.display = 'flex'; $('lerr').textContent = mesaj || '';
@@ -510,7 +940,10 @@ function girisGoster(G, mesaj) {
 }
 async function acilis(G) {
   await raporYukle(G);
-  $('guncelle').onclick = () => guncelleBaslat(G);
+  sipKur();
+  await siparisYukle(G);
+  $('guncelle').onclick = () => guncelleBaslat(G, 'tam');
+  $('sipguncelle').onclick = () => guncelleBaslat(G, 'siparis');
   $('cikis').onclick = () => { try { sessionStorage.removeItem(OTK); } catch (e) {} location.reload(); };
   await durumKontrol(G, false);
 }
