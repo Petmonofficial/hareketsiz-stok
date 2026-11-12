@@ -35,7 +35,7 @@ import urllib.parse
 import urllib.request
 import webbrowser
 
-SURUM = "1.0.0"
+SURUM = "1.1.0"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 AYAR_DOSYASI = os.path.join(BASE_DIR, "ayarlar.ini")
 ONBELLEK_DOSYASI = os.path.join(BASE_DIR, "onbellek.db")
@@ -682,6 +682,55 @@ def rapor_uret(ayar: Ayarlar, api: "PobolApi", onbellek_yolu=ONBELLEK_DOSYASI):
     ozet = ", ".join(f"{p}+ gün: {sum(1 for r in satirlar if r['g'] >= p)}" for p in ayar.pencereler)
     log(f"Rapor hazır ({api.istek_sayisi} istek, {sure:.0f} sn) → {ozet}")
     return veri
+
+
+# --------------------------------------------------------------------------- #
+#  Depo siparişleri (Sipariş Kontrol ekranı için)
+# --------------------------------------------------------------------------- #
+def depo_siparisleri(api: "PobolApi", gun=4):
+    """Depoya düşmüş siparişlerin son `gun` günlük listesini döndürür (sadece okuma).
+
+    Her satır: [kod, pazaryeri_sip_no, kanal, orijinal_kanal, durum, depo_durumu, tarih]
+    Kişisel bilgi (isim, adres, telefon) alınmaz.
+    """
+    simdi = dt.datetime.now()
+    bas = (simdi - dt.timedelta(days=gun - 1)).date()
+    aralik = f"{bas:%d/%m/%Y} 0:00 - {simdi:%d/%m/%Y} 23:59"
+    log(f"Depo siparişleri çekiliyor ({bas:%d.%m.%Y} – {simdi:%d.%m.%Y})...")
+    liste, gorulen = [], set()
+    for rows, s, ss, top in api.sayfali("orders", {"query[orderdate]": aralik}, ust_sinir=50000):
+        for r in rows:
+            kod = alan(r, "orders_ordercode", "ordercode")
+            if not kod:
+                continue
+            kod = str(kod).strip()
+            if kod in gorulen:
+                continue
+            gorulen.add(kod)
+            t = tarih(alan(r, "orders_orderdate", "orderdate", son_ek="orderdate"))
+            liste.append([
+                kod,
+                str(alan(r, "orders_market_place_order_id", "market_place_order_id") or ""),
+                str(alan(r, "orders_type", "orders_flttype", "type") or ""),
+                str(alan(r, "orders_market_place_type", "market_place_type") or ""),
+                str(alan(r, "orders_status", "status") or ""),
+                str(alan(r, "orders_substatus", "substatus") or ""),
+                ts(t) or "",
+            ])
+    # Tarih filtresi çalışmadıysa (aralık dışı kayıt geldiyse) uyar ama listeyi aralıkla sınırla
+    alt = f"{bas:%Y-%m-%d}"
+    disarida = sum(1 for x in liste if x[6] and x[6] < alt)
+    if disarida:
+        log(f"  Uyarı: {disarida} sipariş tarih aralığı dışında geldi, ayıklandı.")
+        liste = [x for x in liste if not x[6] or x[6] >= alt]
+    log(f"  {len(liste)} depo siparişi")
+    return {
+        "cekim": simdi.strftime("%Y-%m-%d %H:%M:%S"),
+        "bas": f"{bas:%Y-%m-%d}",
+        "gun": gun,
+        "sutunlar": ["kod", "pz_no", "kanal", "orj_kanal", "durum", "depo_durum", "tarih"],
+        "liste": liste,
+    }
 
 
 # --------------------------------------------------------------------------- #
