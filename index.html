@@ -209,6 +209,7 @@
   <div class="glass tabs" id="gorunum">
     <button class="tab on" data-g="stok">📦 Hareketsiz Stok</button>
     <button class="tab" data-g="sip">🧾 Sipariş Kontrol <span class="c" id="sipsay" style="display:none"></span></button>
+    <button class="tab" data-g="kg">🚚 KG Takip <span class="c" id="kgsay" style="display:none"></span></button>
   </div>
   <header>
     <h1><span id="btext">Hareketsiz Raf Stoğu</span><small id="sub"></small></h1>
@@ -244,6 +245,23 @@
     <div class="muted" style="font-size:12px;margin:-4px 0 14px">İki dosyayı aynı anda da sürükleyebilirsiniz; hangisinin hangisi olduğu otomatik anlaşılır. Dosyalar hiçbir yere yüklenmez, karşılaştırma bu tarayıcıda yapılır.</div>
     <input type="file" id="dosya" accept=".xlsx,.csv" multiple hidden>
     <div id="sipsonuc"></div>
+  </div>
+
+  <!-- ===================== KG (KOLAY GELSİN) TAKİP ===================== -->
+  <div id="vKG" style="display:none">
+    <div class="glass sbar">
+      <div class="bilgi" id="kgbilgi">Kolay Gelsin dosyası henüz eklenmedi.</div>
+      <label class="chk" title="Bu kadar gündür 'İş Emri Alındı' durumunda kalan gönderi 'Kargoya verilmedi' sayılır">Verilmedi sınırı
+        <input class="inp bekle" id="kgsinir" type="number" min="1" max="30" step="1" value="1"> gün</label>
+      <button class="btn sm" id="kgtemizle">Dosyaları temizle</button>
+    </div>
+    <div id="kgdrop" class="glass drop">
+      <div class="b">Kolay Gelsin gönderi dosyasını buraya sürükleyin</div>
+      <div>ya da tıklayın (.zip veya .xlsx — zip'i açmanıza gerek yok)</div>
+      <div class="k">Kolay Gelsin paneli → Gönderiler → tarih aralığı → Dışa aktar. Birden fazla haftanın dosyasını birlikte sürükleyebilirsiniz; aynı gönderinin en güncel durumu alınır.<br>Dosya hiçbir yere yüklenmez, inceleme bu tarayıcıda yapılır.</div>
+    </div>
+    <input type="file" id="kgdosya" accept=".zip,.xlsx" multiple hidden>
+    <div id="kgsonuc" style="margin-top:14px"></div>
   </div>
 
   <!-- ===================== HAREKETSİZ STOK ===================== -->
@@ -560,15 +578,17 @@ async function zipAc(buf) {
     dosyalar[ad] = {yontem, boy, yer};
     p += 46 + nl + xl + cl;
   }
-  return async ad => {
+  const oku = async (ad, ham) => {
     const f = dosyalar[ad]; if (!f) return null;
     const bas = f.yer + 30 + dv.getUint16(f.yer + 26, true) + dv.getUint16(f.yer + 28, true);
     const veri = u8.subarray(bas, bas + f.boy);
-    if (f.yontem === 0) return new TextDecoder().decode(veri);
+    if (f.yontem === 0) return ham ? veri.slice().buffer : new TextDecoder().decode(veri);
     if (f.yontem !== 8) throw new Error('Desteklenmeyen sıkıştırma');
-    const akis = new Blob([veri]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-    return await new Response(akis).text();
+    const cevap = new Response(new Blob([veri]).stream().pipeThrough(new DecompressionStream('deflate-raw')));
+    return ham ? await cevap.arrayBuffer() : await cevap.text();
   };
+  oku.adlar = Object.keys(dosyalar);
+  return oku;
   // not: dosya adlarını dışarı vermek için
 }
 async function xlsxOku(buf) {
@@ -844,8 +864,10 @@ function gorunumSec(g) {
   document.querySelectorAll('#gorunum .tab').forEach(b => b.classList.toggle('on', b.dataset.g === g));
   $('vStok').style.display = g === 'stok' ? '' : 'none';
   $('vSip').style.display = g === 'sip' ? '' : 'none';
-  $('btext').textContent = g === 'stok' ? 'Hareketsiz Raf Stoğu' : 'Sipariş Kontrol';
-  $('sub').textContent = g === 'stok' ? STOK_ALT : 'entegrapi’deki siparişler depoya düşmüş mü?';
+  $('vKG').style.display = g === 'kg' ? '' : 'none';
+  $('btext').textContent = g === 'stok' ? 'Hareketsiz Raf Stoğu' : g === 'sip' ? 'Sipariş Kontrol' : 'Kolay Gelsin Takip';
+  $('sub').textContent = g === 'stok' ? STOK_ALT : g === 'sip' ? 'entegrapi’deki siparişler depoya düşmüş mü?' : 'Teslim edilmeyen, geciken ve kargoya verilmeyen gönderiler';
+  if (g === 'kg') renderKG();
   try { sessionStorage.setItem('hs_gorunum', g); } catch (e) {}
   if (g === 'sip') renderSip();
 }
@@ -862,12 +884,230 @@ function sipKur() {
     drop.addEventListener('drop', e => { e.stopPropagation(); dosyaYukle(e.dataTransfer.files, drop.dataset.t); });
   });
   // sayfanın başka bir yerine bırakılan dosyalar da kabul edilsin (tür otomatik anlaşılır)
-  window.addEventListener('dragover', e => { if (GORUNUM === 'sip') e.preventDefault(); });
-  window.addEventListener('drop', e => { if (GORUNUM === 'sip') { e.preventDefault(); dosyaYukle(e.dataTransfer.files, null); } });
+  window.addEventListener('dragover', e => { if (GORUNUM === 'sip' || GORUNUM === 'kg') e.preventDefault(); });
+  window.addEventListener('drop', e => {
+    if (GORUNUM === 'sip') { e.preventDefault(); dosyaYukle(e.dataTransfer.files, null); }
+    else if (GORUNUM === 'kg') { e.preventDefault(); kgYukle(e.dataTransfer.files); }
+  });
+  kgKur();
   $('bekle').onchange = () => renderSip();
   $('siptemizle').onclick = () => { EXCEL = DEPOX = null; $('sipsonuc').innerHTML = ''; renderSip(); };
   let g = 'stok'; try { g = sessionStorage.getItem('hs_gorunum') || 'stok'; } catch (e) {}
   gorunumSec(g);
+}
+
+// ===================== KG (KOLAY GELSİN) TAKİP =====================
+// Kolay Gelsin'in "Shipment Export" dosyası (zip ya da xlsx) bu tarayıcıda okunur; hiçbir yere gönderilmez.
+let KG = null;                       // {dosyalar:[{ad, zaman}], satirlar:[...]}
+let KS = {grup: 'dikkat', ara: ''};  // ekran durumu
+const KGKAT = {
+  gecik:  {ad: 'Gecikmede', cls: 'yok', ac: 'Planlanan teslim tarihi geçti, hâlâ teslim edilmedi'},
+  sorun:  {ad: 'Sorunlu', cls: 'yok', ac: 'Eksik teslim, iade ya da sorun bildirimi var'},
+  verilmedi: {ad: 'Kargoya verilmedi', cls: 'fba', ac: 'İş emri alındı ama gönderi kargoya hiç verilmedi (ATF yok)'},
+  yeni:   {ad: 'Yeni iş emri', cls: 'dis', ac: 'Bugün/yakında iş emri alındı, henüz kargoya verilmedi'},
+  yolda:  {ad: 'Yolda', cls: 'bek', ac: 'Kargoda, planlanan teslim tarihi henüz geçmedi'},
+  teslim: {ad: 'Teslim edildi', cls: 'ok', ac: 'Teslim edildi'},
+};
+const KGGRUP = [
+  {k: 'dikkat', ad: '⚠️ Dikkat gerekenler', kat: ['gecik', 'sorun', 'verilmedi']},
+  {k: 'gecik', ad: '⏰ Gecikmede', kat: ['gecik']},
+  {k: 'sorun', ad: '❗ Sorunlu', kat: ['sorun']},
+  {k: 'verilmedi', ad: '📦 Kargoya verilmedi', kat: ['verilmedi']},
+  {k: 'yolda', ad: '🚚 Yolda', kat: ['yolda', 'yeni']},
+  {k: 'teslim', ad: '✓ Teslim edildi', kat: ['teslim']},
+  {k: 'hepsi', ad: 'Tümü', kat: null},
+];
+
+async function kgDosyaOku(f) {
+  let buf = await f.arrayBuffer(), ad = f.name;
+  if (/\.zip$/i.test(f.name)) {  // Kolay Gelsin dosyayı zip içinde veriyor: içindeki xlsx'i bul
+    const z = await zipAc(buf);
+    const ic = z.adlar.find(a => /\.xlsx$/i.test(a));
+    if (!ic) throw new Error(f.name + ': zip içinde .xlsx dosyası bulunamadı.');
+    buf = await z(ic, true); ad = ic.split('/').pop();
+  } else if (!/\.xlsx$/i.test(f.name)) throw new Error(f.name + ': .zip ya da .xlsx dosyası bekleniyor.');
+  const satirlar = await xlsxOku(buf);
+  const n = s => trLower(String(s ?? '').trim()).replace(/\s+/g, ' ');
+  let bi = -1;
+  for (let i = 0; i < Math.min(10, satirlar.length); i++) if (satirlar[i].some(c => n(c) === 'takip no')) { bi = i; break; }
+  if (bi < 0) throw new Error(ad + ': “Takip No” sütunu bulunamadı. Kolay Gelsin gönderi dışa aktarma dosyasını kullanın.');
+  const bas = satirlar[bi].map(n);
+  const s = ad => bas.indexOf(ad);
+  const I = {takip: s('takip no'), atf: s('atf no'), ozel: s('müş. özel kod'), ref: s('ref no'), tarih: s('tarih'),
+    alici: s('alıcı'), il: s('alıcı il'), ilce: s('alıcı ilçe'), sube: s('alıcı şube'), durum: s('durum detay'), devir: s('devir nedeni'),
+    iade: s('iade nedeni'), plan: s('planlanan teslim tarihi'), teslim: s('teslim tarihi'), tacik: s('teslim açıklama'),
+    is: s('iş emrinin alınma tarihi'), islem: s('işlem tarihi'), desi: s('desi/kg'), tutar: s('toplam tutar (kdv dahil)'), diger: s('diğer açıklama')};
+  const al = (r, k) => I[k] >= 0 ? String(r[I[k]] ?? '').trim() : '';
+  const out = [];
+  for (let i = bi + 1; i < satirlar.length; i++) {
+    const r = satirlar[i], takip = al(r, 'takip');
+    if (!takip) continue;
+    out.push({takip, atf: al(r, 'atf'), ozel: al(r, 'ozel'), ref: al(r, 'ref'), tarih: yerelTarih(al(r, 'tarih')),
+      alici: al(r, 'alici'), il: al(r, 'il'), ilce: al(r, 'ilce'), sube: al(r, 'sube'), durum: al(r, 'durum'), devir: al(r, 'devir'),
+      iade: al(r, 'iade'), plan: yerelTarih(al(r, 'plan')), teslim: yerelTarih(al(r, 'teslim')), tacik: al(r, 'tacik'),
+      is: yerelTarih(al(r, 'is')), islem: yerelTarih(al(r, 'islem')), desi: al(r, 'desi'), tutar: parseFloat(al(r, 'tutar')) || 0,
+      diger: al(r, 'diger')});
+  }
+  if (!out.length) throw new Error(ad + ': dosyada gönderi satırı yok.');
+  return {ad, zaman: f.lastModified ? new Date(f.lastModified) : new Date(), satirlar: out};
+}
+
+async function kgYukle(dosyalar) {
+  dosyalar = [...(dosyalar || [])].filter(Boolean);
+  if (!dosyalar.length) return;
+  $('kgsonuc').querySelectorAll('.serr').forEach(e => e.remove());
+  const hatalar = [];
+  const yeni = [];
+  for (const f of dosyalar) { try { yeni.push(await kgDosyaOku(f)); } catch (e) { hatalar.push(e.message); } }
+  if (yeni.length) {
+    const tum = (KG ? KG.dosyalar : []).concat(yeni.map(x => ({ad: x.ad, zaman: x.zaman, n: x.satirlar.length})));
+    const harita = new Map(KG ? KG.satirlar.map(x => [x.takip, x]) : []);
+    for (const x of yeni) for (const r of x.satirlar) {   // aynı gönderi birden çok dosyadaysa en güncel durumu al
+      const eski = harita.get(r.takip);
+      if (!eski || (r.islem || 0) >= (eski.islem || 0)) harita.set(r.takip, r);
+    }
+    KG = {dosyalar: tum, satirlar: [...harita.values()]};
+    KS.grup = 'dikkat';
+  }
+  renderKG();
+  if (hatalar.length) $('kgsonuc').insertAdjacentHTML('afterbegin', hatalar.map(m => `<div class="glass serr">✕ ${esc(m)}</div>`).join(''));
+}
+
+function kgSinifla() {
+  if (!KG) return null;
+  // referans an: dosyanın indirildiği an (en yeni dosya); durumlar o ana kadar geçerli
+  const ref = new Date(Math.max(...KG.dosyalar.map(d => +d.zaman)));
+  const sinir = Math.max(1, +$('kgsinir').value || 1) * 86400000;
+  return KG.satirlar.map(r => {
+    const d = trLower(r.durum), ek = trLower(r.devir + ' ' + r.iade + ' ' + r.diger);
+    let kat;
+    if (r.iade || /iade/.test(d) || /eksik|hasar|kayıp|kayip|adres(te)? bulunama|alıcı yok|teslim edilemedi|reddet/.test(d + ' ' + ek)) kat = 'sorun';
+    else if (/teslim edildi/.test(d) || r.teslim) kat = 'teslim';
+    else if (/iş emri alındı/.test(d) || !r.atf) kat = r.tarih && ref - r.tarih >= sinir ? 'verilmedi' : 'yeni';
+    else kat = r.plan && r.plan < ref ? 'gecik' : 'yolda';
+    const basla = r.is || r.tarih;
+    let gun = null, not = '';
+    if (kat === 'teslim') {
+      if (basla && r.teslim) not = sureYaz(Math.max(0, Math.round((r.teslim - basla) / 60000))) + ' içinde';
+      if (r.plan && r.teslim && r.teslim > r.plan) not += (not ? ' · ' : '') + 'plandan ' + sureYaz(Math.round((r.teslim - r.plan) / 60000)) + ' geç';
+    } else if (kat === 'gecik') { gun = Math.round((ref - r.plan) / 60000); not = 'plan ' + sureYaz(gun) + ' geçti'; }
+    else if (kat === 'verilmedi' || kat === 'yeni') { gun = Math.round((ref - r.tarih) / 60000); not = sureYaz(gun) + 'dır kargoya verilmedi'; }
+    else if (kat === 'yolda' && basla) { gun = Math.round((ref - basla) / 60000); not = sureYaz(gun) + 'dır kargoda'; }
+    return Object.assign({}, r, {kat, gun, not});
+  });
+}
+
+function renderKG() {
+  const kutu = $('kgsonuc'), drop = $('kgdrop');
+  const R = kgSinifla();
+  const c = $('kgsay');
+  if (!R) {
+    $('kgbilgi').innerHTML = 'Kolay Gelsin dosyası henüz eklenmedi.';
+    drop.classList.remove('dolu');
+    kutu.querySelectorAll(':scope > :not(.serr)').forEach(e => e.remove());
+    c.style.display = 'none'; return;
+  }
+  const say = k => R.filter(r => r.kat === k).length;
+  const dikkat = say('gecik') + say('sorun') + say('verilmedi');
+  c.style.display = ''; c.textContent = dikkat; c.classList.toggle('kirmizi', dikkat > 0);
+  const tarihler = R.map(r => r.tarih).filter(Boolean).sort((a, b) => a - b);
+  $('kgbilgi').innerHTML = `Dosya: <b>${KG.dosyalar.map(d => esc(d.ad)).join(', ')}</b> · ${nf.format(R.length)} gönderi` +
+    (tarihler.length ? ` · ${tGoster(tarihler[0]).slice(0, 10)} – ${tGoster(tarihler[tarihler.length - 1]).slice(0, 10)}` : '');
+  drop.classList.add('dolu');
+  drop.innerHTML = `<div class="b">✓ ${nf.format(R.length)} gönderi yüklendi</div><div class="k">Başka haftanın dosyasını da sürükleyebilirsiniz (birleştirilir)</div>`;
+
+  const teslim = R.filter(r => r.kat === 'teslim');
+  const sureler = teslim.map(r => r.teslim && (r.is || r.tarih) ? (r.teslim - (r.is || r.tarih)) / 3600000 : null).filter(x => x != null).sort((a, b) => a - b);
+  const medyan = sureler.length ? sureler[Math.floor(sureler.length / 2)] : null;
+  const zamaninda = teslim.filter(r => r.plan && r.teslim && r.teslim <= r.plan).length;
+  const kargoda = R.filter(r => r.kat !== 'verilmedi' && r.kat !== 'yeni').length;
+  let h = '';
+  if (dikkat === 0) h += `<div class="glass sbanner ok">✓ Geciken, sorunlu ya da kargoya verilmemiş gönderi yok.</div>`;
+  const kk = [
+    ['Toplam gönderi', nf.format(R.length), `${nf.format(kargoda)} tanesi kargoya verildi`],
+    ['Teslim edildi', nf.format(teslim.length), kargoda ? '%' + Math.round(teslim.length / kargoda * 100) + ' (kargoya verilenlerin)' : ''],
+    ['Teslim süresi (ortanca)', medyan == null ? '—' : (medyan < 48 ? Math.round(medyan) + ' sa' : (medyan / 24).toFixed(1) + ' gün'),
+      teslim.length ? `zamanında: %${Math.round(zamaninda / teslim.length * 100)}` : ''],
+    ['⚠️ Dikkat gerekenler', nf.format(dikkat), `gecikmede ${say('gecik')} · sorunlu ${say('sorun')} · verilmedi ${say('verilmedi')}`],
+  ];
+  h += `<section class="kpis">${kk.map(([l, v, s], i) => `<div class="glass kpi"><div class="l">${l}</div><div class="v" style="${i === 3 && dikkat ? 'color:var(--red)' : ''}">${v}</div><div class="s">${s}</div></div>`).join('')}</section>`;
+
+  // durum kartları
+  const kartlar = [['gecik', '⏰ Gecikmede'], ['sorun', '❗ Sorunlu'], ['verilmedi', '📦 Kargoya verilmedi'], ['yolda', '🚚 Yolda'], ['yeni', '🆕 Yeni iş emri'], ['teslim', '✓ Teslim edildi']];
+  h += `<div class="kanallar">${kartlar.map(([k, ad]) => {
+    const n = say(k), kotu = ['gecik', 'sorun', 'verilmedi'].includes(k) && n > 0;
+    const grup = KGGRUP.find(g => g.kat && g.kat.length === 1 && g.kat[0] === k) || (k === 'yeni' ? KGGRUP.find(g => g.k === 'yolda') : null);
+    return `<div class="glass kanal ${kotu ? 'kotu' : (k === 'teslim' ? 'iyi' : '')}" data-g="${grup ? grup.k : 'hepsi'}" title="${esc(KGKAT[k].ac)}">
+      <div class="ad"><span>${ad}</span></div><div class="say">${nf.format(n)}</div><div class="alt">${esc(KGKAT[k].ac)}</div></div>`;
+  }).join('')}</div>`;
+
+  // durum detay dağılımı (yoldakiler için)
+  const yolDurum = {};
+  R.filter(r => r.kat === 'yolda' || r.kat === 'gecik').forEach(r => yolDurum[r.durum] = (yolDurum[r.durum] || 0) + 1);
+
+  const g = KGGRUP.find(x => x.k === KS.grup) || KGGRUP[0];
+  const q = trLower(KS.ara.trim());
+  const sira = {gecik: 0, sorun: 1, verilmedi: 2, yolda: 3, yeni: 4, teslim: 5};
+  const liste = R.filter(r => (!g.kat || g.kat.includes(r.kat)) &&
+      (!q || trLower([r.takip, r.ref, r.ozel, r.alici, r.il, r.ilce, r.durum].join(' ')).includes(q)))
+    .sort((a, b) => sira[a.kat] - sira[b.kat] || (b.gun || 0) - (a.gun || 0) || (b.tarih || 0) - (a.tarih || 0));
+  const grupSay = x => R.filter(r => !x.kat || x.kat.includes(r.kat)).length;
+  h += `<div class="glass filters">
+      <div class="kfilt">${KGGRUP.map(x => `<button class="${x.k === KS.grup ? 'on' : ''}" data-g="${x.k}">${x.ad} <span class="c">${nf.format(grupSay(x))}</span></button>`).join('')}</div>
+      <input class="inp" id="kgara" placeholder="Takip no, alıcı, il, ref no…" value="${esc(KS.ara)}" style="min-width:210px">
+      <span class="spacer"></span>
+      <button class="btn sm" id="kgkopya" ${liste.length ? '' : 'disabled'}>Takip no'ları kopyala</button>
+      <button class="btn sm pri" id="kgcsv" ${liste.length ? '' : 'disabled'}>Excel'e aktar</button>
+    </div>
+    <div class="glass tbl"><div class="tscroll"><table>
+      <thead><tr><th>Sonuç</th><th>Takip no</th><th>Alıcı</th><th>İl / İlçe</th><th>Gönderi tarihi</th><th>Planlanan</th><th>Kargo durumu</th><th>Not</th></tr></thead>
+      <tbody>${liste.length ? liste.slice(0, 500).map(r => `<tr>
+        <td><span class="sb ${KGKAT[r.kat].cls}" title="${esc(KGKAT[r.kat].ac)}">${KGKAT[r.kat].ad}</span></td>
+        <td><span class="kod">${esc(r.takip)}</span><button class="kopya" data-kod="${esc(r.takip)}" title="Kopyala">⧉</button>${r.ozel ? `<div class="pc">Özel kod: ${esc(r.ozel)}</div>` : ''}</td>
+        <td>${esc(r.alici)}</td>
+        <td>${esc(r.il)}${r.ilce ? `<div class="pc">${esc(r.ilce)}</div>` : ''}</td>
+        <td>${tGoster(r.tarih)}</td>
+        <td>${tGoster(r.plan)}</td>
+        <td>${esc(r.durum)}${r.devir && r.devir !== r.durum ? `<div class="pc">${esc(r.devir)}</div>` : ''}${r.iade ? `<div class="pc" style="color:var(--red)">İade: ${esc(r.iade)}</div>` : ''}${r.kat === 'teslim' && r.teslim ? `<div class="pc">${tGoster(r.teslim)}</div>` : ''}</td>
+        <td>${esc(r.not)}</td></tr>`).join('')
+      : `<tr><td colspan="8"><div class="empty">${KS.grup === 'dikkat' ? 'Dikkat gereken gönderi yok 🎉' : 'Bu filtrede gönderi yok'}</div></td></tr>`}</tbody>
+    </table></div></div>
+    ${liste.length > 500 ? `<div class="muted" style="margin:8px 4px">İlk 500 satır gösteriliyor; tamamı için “Excel'e aktar”.</div>` : ''}
+    <footer class="glass"><b>Nasıl sınıflanıyor?</b>
+      <b>Gecikmede:</b> kargoya verilmiş, planlanan teslim tarihi geçmiş ama teslim edilmemiş.
+      <b>Sorunlu:</b> eksik teslim, iade ya da teslim edilemedi bildirimi.
+      <b>Kargoya verilmedi:</b> sistemden iş emri alınmış ama ${esc($('kgsinir').value)} gün geçtiği hâlde kargoya hiç verilmemiş (ATF no yok) — başka kargoyla gönderildiyse sorun değildir.
+      Zamanlar dosyanın indirildiği ana göre hesaplanır; güncel durum için yeni dosya indirin.
+      ${Object.keys(yolDurum).length ? `<br>Yoldakilerin durumu: ${Object.entries(yolDurum).sort((a, b) => b[1] - a[1]).map(([d, n]) => `${esc(d)} (${n})`).join(' · ')}` : ''}</footer>`;
+  kutu.querySelectorAll(':scope > :not(.serr)').forEach(e => e.remove());
+  kutu.insertAdjacentHTML('beforeend', h);
+
+  kutu.querySelectorAll('.kanal').forEach(k => k.onclick = () => { KS.grup = k.dataset.g; renderKG(); });
+  kutu.querySelectorAll('.kfilt button').forEach(b => b.onclick = () => { KS.grup = b.dataset.g; renderKG(); });
+  kutu.querySelectorAll('.kopya').forEach(b => b.onclick = () => kopyala(b.dataset.kod, b));
+  const ara = $('kgara');
+  ara.oninput = () => { KS.ara = ara.value; clearTimeout(ara._t); ara._t = setTimeout(() => { renderKG(); const a = $('kgara'); a.focus(); a.setSelectionRange(a.value.length, a.value.length); }, 250); };
+  $('kgkopya').onclick = e => kopyala(liste.map(r => r.takip).join('\n'), e.target);
+  $('kgcsv').onclick = () => {
+    const qq = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    const bas = ['Sonuç', 'Takip No', 'Müş. Özel Kod', 'Ref No', 'Alıcı', 'İl', 'İlçe', 'Gönderi Tarihi', 'Planlanan Teslim', 'Teslim Tarihi', 'Kargo Durumu', 'Devir Nedeni', 'İade Nedeni', 'Not'];
+    const satir = liste.map(r => [KGKAT[r.kat].ad, r.takip, r.ozel, r.ref, r.alici, r.il, r.ilce, tGoster(r.tarih), tGoster(r.plan),
+      r.teslim ? tGoster(r.teslim) : '', r.durum, r.devir, r.iade, r.not].map(qq).join(';'));
+    const blob = new Blob(['﻿' + bas.join(';') + '\r\n' + satir.join('\r\n')], {type: 'text/csv;charset=utf-8'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `kg_takip_${new Date().toISOString().slice(0, 10)}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  };
+}
+
+function kgKur() {
+  const drop = $('kgdrop'), inp = $('kgdosya');
+  drop.onclick = () => inp.click();
+  inp.onchange = () => { kgYukle(inp.files); inp.value = ''; };
+  ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('ust'); }));
+  ['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('ust'); }));
+  drop.addEventListener('drop', e => { e.stopPropagation(); kgYukle(e.dataTransfer.files); });
+  $('kgsinir').onchange = () => renderKG();
+  $('kgtemizle').onclick = () => { KG = null; $('kgsonuc').innerHTML = ''; renderKG(); };
 }
 
 // ===================== WEB (GitHub) =====================
